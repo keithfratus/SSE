@@ -25,6 +25,7 @@ void mcstep();
 
 void checkl(int step);
 
+//uptest
 
 
 int main() {

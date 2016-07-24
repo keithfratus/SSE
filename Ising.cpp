@@ -37,8 +37,6 @@ int main() {
 
     checkl(i);
 
-    testchange();
-
 
   }
   

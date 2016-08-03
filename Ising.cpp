@@ -1,5 +1,5 @@
 //==============================================//
-// Comment notes:		                            //
+// Comment notes:                               //
 //   // or /*     - Keith's comments.           //
 //   //@ or /*@   - Syrian's comments.          //
 //   /*@@         - Syrian's comment questions. //

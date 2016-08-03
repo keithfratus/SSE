@@ -1,10 +1,24 @@
-//@================================================================//
-//@ Comment notes:                                                 //
-//@   // or /*     - Keith's comments.                             //
-//@   //@ or /*@   - Syrian's comments.                            //
-//@   //& or /*&   - Syrian's comments + questions.                //
-//@   //## or /*## - Syrian's comments + flagged for removal/mod.  //
-//@================================================================//
+//@==================================================================//
+//@ Comment notes:                                                   //
+//@   // or /*        - Keith's comments.                            //
+//@   crtl+f: @       - Syrian's comments.                           //
+//@   crtl+f: $       - Syrian's comments + questions.               //
+//@   crtl+f: ~       - Syrian's comments + flagged for removal/mod. //
+//@   crtl+f: RELOOK  - Relook at before compiling                   //
+//@==================================================================//
+
+//@==================================================================//
+//@ Modification notes:
+//@		1. Started changing n3's to nx's, xyz1 and xyzi to x1, and 
+//@			omitting ny, nz, xyz2, xyz3, disy, disz
+//@		2. Removed random number generator parts and using MTRand
+//@
+//@==================================================================//
+
+/*@ So obviously I'm using quite a bit of global variables. This is mostly because it's
+immediately easier, and seemed to be what you started to do (since this isn't some code
+for a big company, etc.). However, I can certainly switch to lessen the amount of 
+global variables should you suggest so. */  
 
 #include <iostream>
 #include <fstream>
@@ -22,17 +36,17 @@ int nx = 8;
 
 //@ size in x-direction (since 1d, it's only direction)
 
-int ny = 1;
+//~ int ny = 1;
 
-//## size in y-direction (remove later if easily translate into just 1d considerations)
+//~ size in y-direction (remove later if easily translate into just 1d considerations)
 
-int nz = 1;
+//~ int nz = 1;
 
-//## size in z-direction (remove later if easily translate into just 1d considerations)
+//~ size in z-direction (remove later if easily translate into just 1d considerations)
 
-int n3 = nx*ny*nz;
+//~ int n3 = nx*ny*nz;
 
-//## total number of spins (remove later if easily translate into just 1d considerations)
+//~ total number of spins (remove later if easily translate into just 1d considerations)
 
 int ll = 10000;
 
@@ -40,7 +54,7 @@ int ll = 10000;
 
 int lls = 500;
 
-/*& maximum length of subsequence, what does this mean */
+/*$ maximum length of subsequence, what does this mean */
 
 int l;
 
@@ -56,7 +70,7 @@ double beta;
 
 double eshift;
 
-/*& sum of all constants added to the hamiltonian (see hamiltonian equations perhaps?) */
+/*$ sum of all constants added to the hamiltonian (see hamiltonian equations perhaps?) */
 
 int nh;
 
@@ -98,74 +112,74 @@ int nd;
 
 //@----------------------------------------------------------------
 
-int spn[n3] = {0};
+int spn[nx] = {0};
 
-//@ spin array
+//@ //~ spin array, flag n3
 
 int stra[ll] = {0};
 int strb[ll] = {0};
 
-/*& (NOTE reason for names, see str1 below) operator string(s)? uses ll which is the max expansion truncation */
+/*$ (NOTE reason for names, see str1 below) operator string(s)? uses ll which is the max expansion truncation */
 
-int xyz1[n3] = {0};
-int xyz2[n3] = {0};
-int xyz3[n3] = {0};
+int x1[nx] = {0}; //~ changed xyz1 to x1
+//~ int xyz2[n3] = {0};
+//~ int xyz3[n3] = {0};
 
-/*@ corrdinates for given spin i, where x-coordinate is xyz1, y-coordinate is xyz2, z-coordinate is xyz3. note: Sandvik (I believe) makes a typo when he typed that y-coordinate is equal to the same array as x-coordinate. */
+/*@ //~ corrdinates for given spin i, where x-coordinate is xyz1, y-coordinate is xyz2, z-coordinate is xyz3. note: Sandvik (I believe) makes a typo when he typed that y-coordinate is equal to the same array as x-coordinate. */
 
-int xyzi[n3] = {0};
+//~ int xyzi[n3] = {0};
 
-/*## this one gets hairy. Sandvik has it originally as xyzi(nx,ny,nz) which is a 3 dimensional array in fortran77 representing spin number given by coordinates x,y,z = xyzi(x,y,z). so although I am not exactly following him at this point, it's likely best to switch to a 1D chosen from here on out, hence why n3 still works at the moment. Anyway, flagged for modification. */
+/*~ this one gets hairy. Sandvik has it originally as xyzi(nx,ny,nz) which is a 3 dimensional array in fortran77 representing spin number given by coordinates x,y,z = xyzi(x,y,z). so although I am not exactly following him at this point, it's likely best to switch to a 1D chosen from here on out, hence why n3 still works at the moment. Anyway, flagged for modification. */
 
 int disx[nx*nx] = {0};
-int disy[ny*ny] = {0};
-int disz[nz*nz] = {0};
+//~ int disy[ny*ny] = {0};
+//~ int disz[nz*nz] = {0};
 
-/*## this one also could get hairy. although this seems like the best route, just watch for the math. represents the periodic distances in x,y, and z directions between two points (remove later if easily translate into just 1d considerations). possibly still needs modifications as well since original is disx(nx,nx) and etc. */
+/*~ this one also could get hairy. although this seems like the best route, just watch for the math. represents the periodic distances in x,y, and z directions between two points (remove later if easily translate into just 1d considerations). possibly still needs modifications as well since original is disx(nx,nx) and etc. */
 
-int pfrst[n3+1] = {0};
+int pfrst[nx+1] = {0};
 
-/*& first position to search in probability list given INT(R*n3), what is R (random number generator?) and is this similar to frstspinop array? */
+/*$ //~ first position to search in probability list given INT(R*n3), what is R (random number generator?) and is this similar to frstspinop array? */
 
-int plast[n3+1] = {0};
+int plast[nx+1] = {0};
 
-/*& last position to search in probability list given INT(R*n3), what is R (random number generator?) and is this similar to lastspinop array? */
+/*$ //~ last position to search in probability list given INT(R*n3), what is R (random number generator?) and is this similar to lastspinop array? */
 
 bool lis[3][3][nx/2 + 1][ny/2 + 1][nz/2 + 1] = {0};
 
-/*& //## flag for allowed spin configuration given distance between sites. what even is this. ok so original is basically the equivalent of a boolean 5 dimensional array it seems: LOGICAL lis(-1:1,-1:1,0:nx/2,0:ny/2,0:nz/2) */
+/*$ //~ RELOOK AT THIS PART flag for allowed spin configuration given distance between sites. what even is this. ok so original is basically the equivalent of a boolean 5 dimensional array it seems: LOGICAL lis(-1:1,-1:1,0:nx/2,0:ny/2,0:nz/2) */
 
-int ris[nx/2 + 1][ny/2 + 1][nz/2 + 1] = {0};
+double ris[nx/2 + 1][ny/2 + 1][nz/2 + 1] = {0};
 
-/*& //## Sandvik has this as essentially floating numbers in an array, is it necessary (find out in rest of the code), can I even attempt that in c++? represents ising interaction with constants added given distance */
+/*$ //~ RELOOK AT THIS PART ising interaction with constants added given distance */
 
-int pint[n3 + 1] = {0};
+double pint[nx + 1] = {0};
 
-/*& list of integrated probabilities lists, Sandvik uses floating point */
+/*$ //~ list of integrated probabilities lists */
 
-int ap1[ll + 1] = {0};
+double ap1[ll + 1] = {0};
 
-/*& probability for increasing n by 1, given current n. expansion order n (number of non identity hamiltonians in string). Sandvik uses floating point */
+/*$ probability for increasing n by 1, given current n. expansion order n (number of non identity hamiltonians in string). */
 
-int dp1[ll + 1] = {0};
+double dp1[ll + 1] = {0};
 
-/*& probability for decreasing n by 1, given current n. expansion order n (number of non identity hamiltonians in string). */
+/*$ probability for decreasing n by 1, given current n. expansion order n (number of non identity hamiltonians in string). */
 
-int lsub[n3] = {0};
+int lsub[nx] = {0};
 
-/*& length of subsequences?*/
+/*$ //~ length of subsequences?*/
 
-int pos1[lls*n3] = {0};
+int pos1[lls*nx] = {0};
 
-/*& positions?, watch the math */
+/*$ //~ positions?, watch the math */
 
-int str1[lls*n3] = {0};
+int str1[lls*nx] = {0};
 
-//& substring operators?, watch the math (NOTE above name stra and strb arrays)
+//$ //~ substring operators?, watch the math (NOTE above name stra and strb arrays)
 
-int con1[(lls+1)*n3] = {0};
+int con1[(lls+1)*nx] = {0};
 
-//& constraints? watch the math
+//$ //~ constraints? watch the math
 
 //@----------------------------------------------------------------
 
@@ -181,15 +195,15 @@ void mcstep();
 
 void checkl(int step);
 
-/*& check the hamiltonian string length perhaps? has pvectors, openlog, and closelog */
+/*$ check the hamiltonian string length perhaps? has pvectors, openlog, and closelog */
 
-void init();
+void init(MTRand_open& rand_num);
 
 //@ initializes the system: initconf, lattice, pvectors, isingpart, zerodat
 
 void openlog();
 
-/*& looks like writes information to a (12) log.txt (note a 10?), note the closelog function so probably writing the equilibrium step thing to log.txt */
+/*$ looks like writes information to a (12) log.txt (note a 10?), note the closelog function so probably writing the equilibrium step thing to log.txt */
 
 void closelog();
 
@@ -197,15 +211,15 @@ void closelog();
 
 void errcheck();
 
-/*& looks like checks if certain spins weren't possible in the first place? uses str(1,i) & str(2,i) arrays */
+/*$ looks like checks if certain spins weren't possible in the first place? uses str(1,i) and str(2,i) arrays */
 
 void writeconf();
 
-/*& writes length of lattice in x,y,z directions (we'll just use x), beta, L (hamiltonian string length?), spn(i) spin array values, str(1,i) (bond array indicates site left for our case?), str(2,i) (bond array indicates site right for our case?) uses (10) (20)*/ 
+/*$ writes length of lattice in x,y,z directions (we'll just use x), beta, L (hamiltonian string length?), spn(i) spin array values, str(1,i) (bond array indicates site left for our case?), str(2,i) (bond array indicates site right for our case?) uses (10) (20)*/ 
 
 void measure();
 
-/*& measuring observables looks like. note: uses a common which seems like fortran77's version of a sort of pass by reference across different fortran .f files*/
+/*$ measuring observables looks like. note: uses a common which seems like fortran77's version of a sort of pass by reference across different fortran .f files*/
 
 void results();
 
@@ -213,7 +227,7 @@ void results();
 
 void writeacc(int msteps);
 
-/*& writes diagonal acceptance 1, diagonal acceptance 2, off-diagonal substitutions, spin flips / site, max lsub (max hamiltonian string length?) */
+/*$ writes diagonal acceptance 1, diagonal acceptance 2, off-diagonal substitutions, spin flips / site, max lsub (max hamiltonian string length?) */
 
 //@----------------------------------------------------------------
 
@@ -223,21 +237,21 @@ void writeacc(int msteps);
 
 //@----------------------------------------------------------------
 
-void initconf();
+void initconf(MTRand_open& rand_num);
 
 /*@ generates initial random spin state and sets initial values for l (Hamiltonian string length) and nh (number of non identity Hamiltonians) */
 
 void lattice();
 
-/*& creates lattice for coordinates for the lattice sites (1D in this case though) and vectors for distances that take into account the periodic boundary conditions (gives shorter of two possible distances, although this is probably simpler because we're just 1d) */
+/*$ creates lattice for coordinates for the lattice sites (1D in this case though) and vectors for distances that take into account the periodic boundary conditions (gives shorter of two possible distances, although this is probably simpler because we're just 1d) */
 
 void pvectors();
 
-/*& calculate the acceptance probabilities for the n-changing update */
+/*$ calculate the acceptance probabilities for the n-changing update */
 
 void isingpart();
 
-/*& not entirely sure what this does */
+/*$ not entirely sure what this does */
 
 void zerodat();
 
@@ -258,7 +272,7 @@ int main() {
 
 	//@ random number generator (0,1). Note: omitted RAN(), INITRANDOM, and WRITERAND(rndf)
 
-	init();
+	init(rand_num);
 
 	//@ consider Sandvik's (in == 0)
 
@@ -336,10 +350,10 @@ int main() {
 
 //@----------------------------------------------------------------
 
-void init() {
+void init(MTRand_open& rand_num) {
 
 	//@ omitted readconf function
-	initconf();
+	initconf(rand_num);
 	lattice();
 	pvectors();
 	isingpart();
@@ -349,6 +363,92 @@ void init() {
 
 //@----------------------------------------------------------------
 
-void initconf() {
-
+void initconf(MTRand_open& rand_num) {
 	
+	int c;
+	
+	l = 20;
+
+	//$ why is 20 hardcoded into here
+
+	nh = 0;
+
+	for (int i=0; i<ll; i++) {
+		stra[i] = 0;
+		strb[i] = 0;
+	}
+
+	//$ still not explicitly clear about these guys
+
+	for (int j=0; j<nx; j++) { //~ flag mod/removal n3 (flag n3)
+		spn[j] = -1;
+	}
+
+	//@ setting all spins to -1 first
+
+	for (int k=0; k<nx/2; k++) { /*$ note confirm how this is supposed to play out if n3/2=integer or n3/2=floating point=rounded integer in fortran77 version at least */
+		c = min ((int(rand_num()*n3) + 1), n3); //~ flag n3
+		
+		while (true) {
+			if (spn[c] == -1) {
+				break;
+			}
+			c = min ((int(rand_num()*nx) + 1), nx); //~ flag n3
+		}
+
+/*$ NOTE: so this one may be tricky or I may be over thinking it. at first I just thought it was a simple goto continue basically, but he doesn't place to "goto 10"'s 10 at the end of the loop, he puts it at the first min(,) statement. which I believe means the code wants to repeat finding another random site that IS spn[c] = -1 and flip that to spn[c] 1 so that EXACTLY (if n3 is an even number, roughly half if n3 is odd) half of the spins are +1 (spin up) and half the spins are (-1) after randomly choosing spins and flipping or leaving the same +1 (spin up), until this is true. So I'm going to simply implement a forever loop that accomplishes that for now (apparently the internet hates goto statements) unless I think of something better. */
+
+		spn[c] = 1;
+	}
+
+}
+
+//@----------------------------------------------------------------
+
+void lattice() { //~ lots of omits due to original using 3 dimensions
+	
+	for (int i=0; i<nx; i++) {
+		x1[i] = i;
+	}
+	
+	for (int j=0; j<nx; j++) {
+		for (int k=0; k<nx; k++) {
+			disx[nx*k + j]= abs(k - j);
+			if (disx[nx*k + j] > nx/2) {
+				disx[nx*k + j] = nx - disx[nx*k + j];
+			}
+		}
+	}
+
+}
+
+//@----------------------------------------------------------------
+
+void pvectors() { /*$ Note: Sandvik uses 0 to l essentially for ap1[i] array, but 1 to l+1 for dp1[i]? Careful with that? I'm using 0 to l and 0 to l for both for now. */
+
+	for (int i=0; i<l; i++ ) {
+		ap1[i] = ht * beta * double(nx) / double(l - i);
+	} 
+
+	for (int j=0; j<l; j++) { /*$ confusing for the (l - j + 1) part, should i translate it to (l - j + 2), (l - j + 1), or (l - j) oh wait it probably wants it so we don't get 0 on top hence the + 1. FOR NOW at least, I'll do l - j). Find these parts in the paper. It's recognizable, but I want confirmation. */
+		dp1[i] = double(l - j) / (ht * beta * double(nx));
+	}
+
+}
+
+//@----------------------------------------------------------------
+
+void isingpart() {
+
+
+
+
+
+
+}
+
+
+//@----------------------------------------------------------------
+
+
+

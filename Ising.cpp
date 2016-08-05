@@ -24,8 +24,12 @@ global variables should you suggest so. */
 #include <iostream>
 #include <fstream>
 #include <cmath>
+#include <iomanip>
+#include <algorithm>
 
-#include <MT/mtrand.h>
+#include "MT/mtrand.h"
+
+using namespace std;
 
 //@----------------------------------------------------------------
 
@@ -33,7 +37,7 @@ global variables should you suggest so. */
 
 //@----------------------------------------------------------------
 
-int nx = 8;
+const int nx = 8;
 
 //@ size in x-direction (since 1d, it's only direction)
 
@@ -49,23 +53,23 @@ int nx = 8;
 
 //~ total number of spins (remove later if easily translate into just 1d considerations)
 
-int ll = 10000;
+const int ll = 10000;
 
 //@ max value for expansion truncation L (hamiltonian string cut off max)
 
-int lls = 500;
+const int lls = 500;
 
 /*$ maximum length of subsequence, what does this mean */
 
 int l;
 
-//@ expansion truncation, or hamiltonian string cut off max
+//@ expansion truncation, or hamiltonian string cut off max, note: hard-coded to be 20 in initconf()
 
-double ht;
+double ht = 0.5;
 
 // transverse field strength
 
-double beta;
+double beta = 1.0;
 
 // inverse temperature
 
@@ -87,11 +91,11 @@ double ar1, ar2, ar3, ar4;
 
 //@----------------------------------------------------------------
 
-int isteps;
+int isteps = 10000;
 
 //@ equilibriation steps
 
-int msteps;
+int msteps = 10000;
 
 //@ measurement steps 
 
@@ -209,11 +213,9 @@ bool lstr[ll] = {0};
 
 //$
 
-int spn[nx] = {0};
+int spn1[nx] = {0};
 
 //$
-
-
 
 //@----------------------------------------------------------------
 
@@ -227,7 +229,7 @@ void mcstep(MTRand_open& rand_num);
 
 //@ monte carlo step
 
-void checkl(int step, ofstream& myfile1);
+void checkl(int step, ofstream& myfile1, MTRand_open& rand_num);
 
 /*$ check the hamiltonian string length perhaps? has pvectors, openlog, and closelog */
 
@@ -299,7 +301,7 @@ void partition();
 
 //$ ?
 
-void offupdate(int s);
+void offupdate(int s, MTRand_open& rand_num);
 
 //$
 
@@ -333,11 +335,13 @@ int main() {
 
 	//@ consider Sandvik's (in == 0)
 
+	cout << "I have made a configuration and have started first mcstep loop" << "\n\n";
+
 	for (int i=0; i<isteps; i++) {
 
 		mcstep(rand_num);
 
-		checkl(i, myfile1);
+		checkl(i, myfile1, rand_num);
 
 		if (((i+1)%(isteps/10))==0) { //@ to record every 10 steps
 	
@@ -352,18 +356,22 @@ int main() {
 		}
 
 	}
-		
+
+	cout << "I have finished the first mcstep loops, error checked, and etc." << "\n\n";
+
 	writeconf(myfile2);
+
+	cout << "I have written down the configuration for that loop" << "\n\n";
 
 	for (int j=0; j<nd; j++) { /*@ so in Sandvik's code the 10 label in the loop is basically another way to have "enddo" in the form of "10 continue" (probably has utility for goto 10 or something)*/
 	
-		double ar1 = 0.0;
-		double ar2 = 0.0;
-		double ar3 = 0.0;
-		double ar4 = 0.0;
+		ar1 = 0.0;
+		ar2 = 0.0;
+		ar3 = 0.0;
+		ar4 = 0.0;
 		for (int k=0; k<msteps; k++) {
 
-			mcstep();
+			mcstep(rand_num);
 
 			if (((k+1)%2)==0) {
 
@@ -392,7 +400,7 @@ int main() {
 		writeconf(myfile2);
 
 	}
-
+	cout << "I have finished the second loop, wrote results, and etc." << "\n\n";
 	myfile1.close(); //@ Finish the write-data-to-file.
 	myfile2.close();
 	myfile3.close();
@@ -449,7 +457,7 @@ void initconf(MTRand_open& rand_num) {
 	//@ setting all spins to -1 first
 
 	for (int k=0; k<nx/2; k++) { /*$ note confirm how this is supposed to play out if n3/2=integer or n3/2=floating point=rounded integer in fortran77 version at least */
-		c = min ((int(rand_num()*n3) + 1), n3); //~ flag n3
+		c = min ((int(rand_num()*nx) + 1), nx); //~ flag n3
 		
 		while (true) {
 			if (spn[c] == -1) {
@@ -493,7 +501,7 @@ void pvectors() { /*$ Note: Sandvik uses 0 to l essentially for ap1[i] array, bu
 	} 
 
 	for (int j=0; j<l; j++) { /*$ confusing for the (l - j + 1) part, should i translate it to (l - j + 2), (l - j + 1), or (l - j) oh wait it probably wants it so we don't get 0 on top hence the + 1. FOR NOW at least, I'll do l - j). Find these parts in the paper. It's recognizable, but I want confirmation. */
-		dp1[i] = double(l - j) / (ht * beta * double(nx));
+		dp1[j] = double(l - j) / (ht * beta * double(nx));
 	}
 
 }
@@ -502,9 +510,10 @@ void pvectors() { /*$ Note: Sandvik uses 0 to l essentially for ap1[i] array, bu
 
 void isingpart() {
 
+	int ix; //@note ix used for inside below loop as well
 	double r1, r2, p1, p2;
 
-	for (int ix=0; ix<(nx/2+2); ix++) { /*$ //~ note because see lis..[max], test different values perhaps, it's because he introduces a 0 index when fortran arrays are usually 1 to number inclusive both ends, whereas c++ is 0 to number inclusive for 0 and exclusive for number */
+	for (ix=0; ix<(nx/2+2); ix++) { /*$ //~ note because see lis..[max], test different values perhaps, it's because he introduces a 0 index when fortran arrays are usually 1 to number inclusive both ends, whereas c++ is 0 to number inclusive for 0 and exclusive for number */
 		if (ix==0) {
 			ris[ix] = ht;
 			lisupup[ix] = true;
@@ -540,7 +549,7 @@ void isingpart() {
 	}
 	
 	for (int j=1; j<(nx+1); j++) {
-		pint[i] = pint[i]/pint[nx];
+		pint[j] = pint[j]/pint[nx];
 	}
 
 	for (int k=0; k<(nx+1); k++) {
@@ -559,7 +568,7 @@ void isingpart() {
 		if (k==nx) {
 			plast[k] = nx;
 		} else {
-			for (int d=pfrst[k]; d<(n3+1); d++) {
+			for (int d=pfrst[k]; d<(nx+1); d++) {
 				if (pint[d]>=p2) {
 					plast[k] = d;
 					break; /*@ go to next statement which is beginning of the for (int k=0; k<(nx+1); k++) loop */
@@ -577,7 +586,7 @@ void mcstep(MTRand_open& rand_num) {
 	diaupdate(rand_num);
 	partition();
 	for (int i=0; i<nx; i++) {
-		offupdate(i);
+		offupdate(i, rand_num);
 	}
 
 }
@@ -586,7 +595,7 @@ void mcstep(MTRand_open& rand_num) {
 
 void diaupdate(MTRand_open& rand_num) {
 
-	int s1, s2, p0, p2, ix, nac1, nac2, ntr2;
+	int s1, s2, p0, p1, p2, ix, nac1, nac2, ntr2;
 	double p;
 					
 	bool lisfroms1s2;
@@ -644,7 +653,7 @@ void diaupdate(MTRand_open& rand_num) {
 				//@ goto from far below
 
 				if (p1==p2) {
-					s2 = ((s1 + p1 - 2) % n3) + 1;
+					s2 = ((s1 + p1 - 2) % nx) + 1;
 					ix = disx[nx*x1[s1] + x1[s2]];
 					//@------------------------------------
 					if (spn[s1]==1) {
@@ -754,17 +763,17 @@ void partition() {
 	}
 
 	for (int j=0; j<l; j++) {
-		s1 = str1[i];
+		s1 = stra[j];
 		if (s1!=0) {
-			s2 = str2[i];
+			s2 = strb[j];
 			if (s1==s2) {
 				lsub[s1] += 1;
-				pos1[lls*lsub[s1] + s1] = i;
+				pos1[lls*lsub[s1] + s1] = j;
 				str1[lls*lsub[s1] + s1] = 1;
 				con1[(lls+1)*lsub[s1] + s1] = false; //$ check the math
 			} else if (s1==-1) {
 				lsub[s2] += 1;
-				pos1[lls*lsub[s2] + s2] = i;
+				pos1[lls*lsub[s2] + s2] = j;
 				str1[lls*lsub[s2] + s2] = 2;
 				con1[(lls+1)*lsub[s2] + s2] = false; //$ check the math
 			} else {
@@ -775,12 +784,12 @@ void partition() {
 	}
 	
 	for (int k=0; k<nx; k++) {
-		if (con1[i]) {
-			con1[(lls+1)*lsub[i] + i] = true; //$ check the math
+		if (con1[k]) {
+			con1[(lls+1)*lsub[k] + k] = true; //$ check the math
 		}
 			
-		if (lsub[i]>mlls) {
-			mlls = lsub[i];
+		if (lsub[k]>mlls) {
+			mlls = lsub[k];
 		}
 	}
 
@@ -788,9 +797,9 @@ void partition() {
 
 //@----------------------------------------------------------------
 
-void offupdate(int s) {
+void offupdate(int s, MTRand_open& rand_num) {
 	
-	int ii, s, p1, p2, lens, flp, top, nac, nupd;
+	int ii, p1, p2, lens, flp, top, nac, nupd;
 
 	nupd = 0;
 	lens = lsub[s];
@@ -866,7 +875,7 @@ void offupdate(int s) {
 
 //@----------------------------------------------------------------
 
-void checkl(int step, ofstream& myfile1) {
+void checkl(int step, ofstream& myfile1, MTRand_open& rand_num) {
 
 	int p, dl, l1;
 
@@ -880,7 +889,7 @@ void checkl(int step, ofstream& myfile1) {
 		lstr[i] = true;
 	}
 
-	for (int j=0; j<d1; j++) {
+	for (int j=0; j<dl; j++) {
 		while (true) {
 			p = min(int(rand_num()*l1) + 1, l1);
 			if (lstr[p]) {
@@ -904,8 +913,8 @@ void checkl(int step, ofstream& myfile1) {
 
 	l = l1;
 	for (int d=0; d<l; d++) {
-		str1[d] = tmp1[d];
-		str2[d] = tmp2[d];
+		stra[d] = tmp1[d];
+		strb[d] = tmp2[d];
 	}
 	
 	pvectors();
@@ -940,7 +949,7 @@ void errcheck() {
 		}
 
 		if (s1>0) {
-			ix = disx(nx*x1[s1] + x1[s2]);
+			ix = disx[nx*x1[s1] + x1[s2]];
 			if (spn[s1]==1) {
 				if (spn[s2]==1) {
 					lisfroms1s2 = lisupup[ix];
@@ -989,10 +998,10 @@ void writeconf(ofstream& myfile2) {
 	myfile2 << "\n" << "----------------" << "\n\n\n";
 
 	for (int j=0; j<l; j++) {
-		myfile2 << stra[i] << " " << strb[i] << "\n";
+		myfile2 << stra[j] << " " << strb[j] << "\n";
 	}
 
-	myfile2 << "\n" << "----------------"
+	myfile2 << "\n" << "----------------" << "\n\n";
 
 }
 
@@ -1091,7 +1100,7 @@ void zerodat() {
 	xu = 0.0;
 	avnu = 0.0;
 	avni = 0.0;
-	avnt1 = 0.0;
+	avnt = 0.0;
 	avn1 = 0.0;
 	avn2 = 0.0;
 	nmsr = 0;
@@ -1100,7 +1109,7 @@ void zerodat() {
 
 //@----------------------------------------------------------------
 
-void writeacc(int msteps, ofstream& myfile5)
+void writeacc(int msteps, ofstream& myfile5) {
 
 	ar1 = ar1/double(msteps);
 	ar2 = ar2/double(msteps);

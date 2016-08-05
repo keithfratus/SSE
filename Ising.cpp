@@ -12,7 +12,8 @@
 //@		1. Started changing n3's to nx's, xyz1 and xyzi to x1, and 
 //@			omitting ny, nz, xyz2, xyz3, disy, disz
 //@		2. Removed random number generator parts and using MTRand
-//@
+//@		3. openlog(), closelog() functions.
+//@   4. readconf() not used because doesn't seem like we'd want to?
 //@==================================================================//
 
 /*@ So obviously I'm using quite a bit of global variables. This is mostly because it's
@@ -28,7 +29,7 @@ global variables should you suggest so. */
 
 //@----------------------------------------------------------------
 
-//@ is.h information (variables)
+//@ variables (is.h)
 
 //@----------------------------------------------------------------
 
@@ -68,7 +69,7 @@ double beta;
 
 // inverse temperature
 
-double eshift;
+double eshft;
 
 /*$ sum of all constants added to the hamiltonian (see hamiltonian equations perhaps?) */
 
@@ -86,12 +87,6 @@ double ar1, ar2, ar3, ar4;
 
 //@----------------------------------------------------------------
 
-//@----------------------------------------------------------------
-
-//@ other global (variables)
-
-//@----------------------------------------------------------------
-
 int isteps;
 
 //@ equilibriation steps
@@ -104,11 +99,19 @@ int nd;
 
 // number of runs
 
-//@----------------------------------------------------------------
+int nmsr;
+
+//$
+
+double su, xu, avnu, avni, avnt, avn1, avn2;
+
+//$
 
 //@----------------------------------------------------------------
 
-//@ initializing arrays from is.h
+//@----------------------------------------------------------------
+
+//@ initializing arrays (is.h)
 
 //@----------------------------------------------------------------
 
@@ -119,7 +122,7 @@ int spn[nx] = {0};
 int stra[ll] = {0};
 int strb[ll] = {0};
 
-/*$ (NOTE reason for names, see str1 below) operator string(s)? uses ll which is the max expansion truncation */
+/*$ (NOTE reason for names, see str1 below) operator string(s)? uses ll which is the max expansion truncation. go down p list decides which operator it is. i and j can be much farther apart, but there are still two things to specify hence the 1,2 part of the multidimensions first array gives i second array gives j put together to get Hij*/
 
 int x1[nx] = {0}; //~ changed xyz1 to x1
 //~ int xyz2[n3] = {0};
@@ -145,13 +148,16 @@ int plast[nx+1] = {0};
 
 /*$ //~ last position to search in probability list given INT(R*n3), what is R (random number generator?) and is this similar to lastspinop array? */
 
-bool lis[3][3][nx/2 + 1][ny/2 + 1][nz/2 + 1] = {0};
+bool lisupup[nx/2 + 1] = {0};
+bool lisupdown[nx/2 + 1] = {0};
+bool lisdownup[nx/2 + 1] = {0};
+bool lisdowndown[nx/2 + 1] = {0};
 
-/*$ //~ RELOOK AT THIS PART flag for allowed spin configuration given distance between sites. what even is this. ok so original is basically the equivalent of a boolean 5 dimensional array it seems: LOGICAL lis(-1:1,-1:1,0:nx/2,0:ny/2,0:nz/2) */
+/*$ //~ For allowed spin configuration given distance between sites. ok so original is basically the equivalent of a boolean 5 dimensional array it seems: LOGICAL lis(-1:1,-1:1,0:nx/2,0:ny/2,0:nz/2). I just split into 4 arrays. */
 
-double ris[nx/2 + 1][ny/2 + 1][nz/2 + 1] = {0};
+double ris[nx/2 + 1] = {0};
 
-/*$ //~ RELOOK AT THIS PART ising interaction with constants added given distance */
+/*$ //~ ising interaction with constants added given distance */
 
 double pint[nx + 1] = {0};
 
@@ -177,9 +183,37 @@ int str1[lls*nx] = {0};
 
 //$ //~ substring operators?, watch the math (NOTE above name stra and strb arrays)
 
-int con1[(lls+1)*nx] = {0};
+bool con1[(lls+1)*nx] = {0};
 
 //$ //~ constraints? watch the math
+
+//@----------------------------------------------------------------
+
+int pos[lls] = {0};
+
+//$
+
+int opr[lls] = {0};
+
+//$
+
+int tmp1[ll] = {0};
+
+//$
+
+int tmp2[ll] = {0};
+
+//$
+
+bool lstr[ll] = {0};
+
+//$
+
+int spn[nx] = {0};
+
+//$
+
+
 
 //@----------------------------------------------------------------
 
@@ -189,11 +223,11 @@ int con1[(lls+1)*nx] = {0};
 
 //@----------------------------------------------------------------
 
-void mcstep();
+void mcstep(MTRand_open& rand_num);
 
 //@ monte carlo step
 
-void checkl(int step);
+void checkl(int step, ofstream& myfile1);
 
 /*$ check the hamiltonian string length perhaps? has pvectors, openlog, and closelog */
 
@@ -201,11 +235,11 @@ void init(MTRand_open& rand_num);
 
 //@ initializes the system: initconf, lattice, pvectors, isingpart, zerodat
 
-void openlog();
+//@ void openlog();
 
 /*$ looks like writes information to a (12) log.txt (note a 10?), note the closelog function so probably writing the equilibrium step thing to log.txt */
 
-void closelog();
+//@ void closelog();
 
 //@ close the (12) log.txt
 
@@ -213,7 +247,7 @@ void errcheck();
 
 /*$ looks like checks if certain spins weren't possible in the first place? uses str(1,i) and str(2,i) arrays */
 
-void writeconf();
+void writeconf(ofstream& myfile2);
 
 /*$ writes length of lattice in x,y,z directions (we'll just use x), beta, L (hamiltonian string length?), spn(i) spin array values, str(1,i) (bond array indicates site left for our case?), str(2,i) (bond array indicates site right for our case?) uses (10) (20)*/ 
 
@@ -221,11 +255,11 @@ void measure();
 
 /*$ measuring observables looks like. note: uses a common which seems like fortran77's version of a sort of pass by reference across different fortran .f files*/
 
-void results();
+void results(ofstream& myfile3, ofstream& myfile4);
 
 /*@ writes calculated observables into (10) mag.dat for su and xu, (10) enr.dat for e, c, avni, avnt, and avnu */
 
-void writeacc(int msteps);
+void writeacc(int msteps, ofstream& myfile5);
 
 /*$ writes diagonal acceptance 1, diagonal acceptance 2, off-diagonal substitutions, spin flips / site, max lsub (max hamiltonian string length?) */
 
@@ -257,6 +291,18 @@ void zerodat();
 
 //@ sets measurement data variables to 0.0
 
+void diaupdate(MTRand_open& rand_num);
+
+//@ [-1,i] = flips i; [0,0] = 1; [i,i] = h; [i,j] = ising operator
+
+void partition();
+
+//$ ?
+
+void offupdate(int s);
+
+//$
+
 //@----------------------------------------------------------------
 
 //@----------------------------------------------------------------
@@ -266,6 +312,17 @@ void zerodat();
 //@----------------------------------------------------------------
 
 int main() {
+
+	ofstream myfile1; //@ Initialize the write-data-to-file.
+	myfile1.open ("log.txt"); //@ Name and begin the write-data-to-file.
+	ofstream myfile2;
+	myfile2.open ("writeconf.txt");
+	ofstream myfile3;
+	myfile3.open ("mag.txt");
+	ofstream myfile4;
+	myfile4.open ("enr.txt");
+	ofstream myfile5;
+	myfile5.open ("acc.txt");
 
 	unsigned long int time_seed = time(NULL);
 	MTRand_open rand_num(time_seed);
@@ -278,17 +335,17 @@ int main() {
 
 	for (int i=0; i<isteps; i++) {
 
-		mcstep();
+		mcstep(rand_num);
 
-		checkl(i);
+		checkl(i, myfile1);
 
 		if (((i+1)%(isteps/10))==0) { //@ to record every 10 steps
 	
-			openlog();
+			//@ openlog();
 
-			cout << "Done equilibriation step: " << i << "\n\n";	
+			myfile1 << "Done equilibriation step: " << i << "\n\n";	
 		
-			closelog();
+			//@ closelog();
 
 			errcheck();
 
@@ -296,7 +353,7 @@ int main() {
 
 	}
 		
-	writeconf();
+	writeconf(myfile2);
 
 	for (int j=0; j<nd; j++) { /*@ so in Sandvik's code the 10 label in the loop is basically another way to have "enddo" in the form of "10 continue" (probably has utility for goto 10 or something)*/
 	
@@ -316,11 +373,11 @@ int main() {
 
 			if (((k+1)%(msteps/10))==0) { //@ to record every 10 steps
 
-				openlog();
+				//@ openlog();
 
-				cout << "Done measurement step: " << j << ", " << k << "\n\n";
+				myfile1 << "Done measurement step: " << j << ", " << k << "\n\n";
 
-				closelog();
+				//@ closelog();
 
 				errcheck();
 
@@ -328,14 +385,19 @@ int main() {
 
 		}
 
-		results();
+		results(myfile3, myfile4);
 
-		writeacc(msteps);
+		writeacc(msteps, myfile5);
 
-		writeconf();
+		writeconf(myfile2);
 
 	}
 
+	myfile1.close(); //@ Finish the write-data-to-file.
+	myfile2.close();
+	myfile3.close();
+	myfile4.close();
+	myfile5.close();
 
 	return 0;
 
@@ -411,11 +473,11 @@ void lattice() { //~ lots of omits due to original using 3 dimensions
 		x1[i] = i;
 	}
 	
-	for (int j=0; j<nx; j++) {
-		for (int k=0; k<nx; k++) {
+	for (int j=0; j<nx; j++) { //@ (think rows)
+		for (int k=0; k<nx; k++) { //@ (think cols)
 			disx[nx*k + j]= abs(k - j);
-			if (disx[nx*k + j] > nx/2) {
-				disx[nx*k + j] = nx - disx[nx*k + j];
+			if (disx[nx*k + j]>(nx/2)) { 
+				disx[nx*k + j] = nx - disx[nx*k + j]; /*@ significance of this, why are we ignoring certain distances and how do odd/even choices affect this, the nx/2 doesn't even simply just chop things in half, there isn't an equal amount of different distances. */
 			}
 		}
 	}
@@ -440,15 +502,616 @@ void pvectors() { /*$ Note: Sandvik uses 0 to l essentially for ap1[i] array, bu
 
 void isingpart() {
 
+	double r1, r2, p1, p2;
 
+	for (int ix=0; ix<(nx/2+2); ix++) { /*$ //~ note because see lis..[max], test different values perhaps, it's because he introduces a 0 index when fortran arrays are usually 1 to number inclusive both ends, whereas c++ is 0 to number inclusive for 0 and exclusive for number */
+		if (ix==0) {
+			ris[ix] = ht;
+			lisupup[ix] = true;
+			lisupdown[ix] = false;
+			lisdownup[ix] = false;
+			lisdowndown[ix] = true;
+		} else {
+			r1 = double(ix);
+			r2 = double(nx - ix);
+			ris[ix] = -1.0/(r1*r1) - 1.0/(r2*r2);
+			if (ris[ix]<=0) {
+				lisupup[ix] = true;
+				lisupdown[ix] = false;
+				lisdownup[ix] = false;
+				lisdowndown[ix] = true;
+			} else {
+				lisupup[ix] = false;
+				lisupdown[ix] = true;
+				lisdownup[ix] = true;
+				lisdowndown[ix] = false;
+			}
+			ris[ix] = abs(ris[ix]);
+		}
+	}
 
+	pint[0] = 0.0;
+	pint[1] = ris[0]; //$ //~ perhaps should switch with max ris value instead, but unsure
+	eshft = 0.0;
+	for (int i=1; i<nx; i++) {
+		ix = disx[x1[i]]; /*@ to be clear, this is finding the distance between the first site (site x1[0]) and every other site (site x1[i]), note: 1 to nx*/
+		pint[i] = pint[i-1] + ris[ix];
+		eshft += ris[ix]/2;
+	}
+	
+	for (int j=1; j<(nx+1); j++) {
+		pint[i] = pint[i]/pint[nx];
+	}
 
+	for (int k=0; k<(nx+1); k++) {
+		p1 = double(k)/double(nx);
+		p2 = double(k+1)/double(nx);
+		if (k==0) {
+			pfrst[k] = 1;
+		} else {
+			for (int c=pfrst[k-1]; c<(nx+1); c++) {
+				if (pint[c] >= p1) {
+					pfrst[k] = c;
+					break; //@ go to next if statement the if (k==nx) one
+				}
+			}
+		}
+		if (k==nx) {
+			plast[k] = nx;
+		} else {
+			for (int d=pfrst[k]; d<(n3+1); d++) {
+				if (pint[d]>=p2) {
+					plast[k] = d;
+					break; /*@ go to next statement which is beginning of the for (int k=0; k<(nx+1); k++) loop */
+				}
+			}
+		}
+	}
+
+}
+
+//@----------------------------------------------------------------
+
+void mcstep(MTRand_open& rand_num) {
+
+	diaupdate(rand_num);
+	partition();
+	for (int i=0; i<nx; i++) {
+		offupdate(i);
+	}
+
+}
+
+//@----------------------------------------------------------------
+
+void diaupdate(MTRand_open& rand_num) {
+
+	int s1, s2, p0, p2, ix, nac1, nac2, ntr2;
+	double p;
+					
+	bool lisfroms1s2;
+				
+	nac1 = 0;
+	nac2 = 0;
+	ntr2 = 0;
+	for (int i = 0; i<l; i++) {
+		s1 = stra[i];
+		s2 = strb[i];
+		if (s1==0) {
+			p = ap1[nh];
+			if (p>=1) {
+				stra[i] = min(int(rand_num()*nx)+1, nx);
+				strb[i] = stra[i];
+				nh += 1;
+				nac1 += 1;
+			} else if (rand_num()<p) {
+				stra[i] = min(int(rand_num()*nx)+1, nx);
+				strb[i] = stra[i];
+				nh += 1;
+				nac1 += 1;
+			}
+			
+		} else if (s1==s2) {
+			p = dp1[nh];
+			if (p>=1) {
+				stra[i] = 0;
+				strb[i] = 0;
+				nh -= 1;
+				nac1 += 1;
+			} else if (rand_num()<p) {
+				stra[i] = 0;
+				strb[i] = 0;
+				nh -= 1;
+				nac1 += 1;
+			}
+					
+		} else if (s1==-1) {
+			spn[s2] = -spn[s2];
+		}
+					
+		s1 = stra[i];
+						
+		if (s1>0) {
+					
+			while (true) {
+				ntr2 += 1;
+				p = rand_num();
+				p0 = int(p*nx);
+				p1 = pfrst[p0];
+				p2 = plast[p0];
+
+				fromlastelse:
+				//@ goto from far below
+
+				if (p1==p2) {
+					s2 = ((s1 + p1 - 2) % n3) + 1;
+					ix = disx[nx*x1[s1] + x1[s2]];
+					//@------------------------------------
+					if (spn[s1]==1) {
+						if (spn[s2]==1) {
+							lisfroms1s2 = lisupup[ix];
+						} else {
+							lisfroms1s2 = lisupdown[ix];
+						}
+					} else {
+						if (spn[s2]==1) {
+							lisfroms1s2 = lisdownup[ix];
+						} else {
+							lisfroms1s2 = lisdowndown[ix];
+						}
+					}					
+					//@------------------------------------
+					//@ above is because I'm using four 1D arrays to represent lis 3D array
+					if (lisfroms1s2) {
+						strb[i] = s2;
+						nac2 += 1;
+						break;
+					}
+
+				} else if (p2==(p1+1)) {
+					if (pint[p1]>=p) {
+						s2 = ((s1 + p1 - 2) % nx) + 1;
+					} else {
+						s2 = ((s1 + p2 - 2) % nx) + 1;
+					}
+					ix = disx[nx*x1[s1] + x1[s2]];
+
+					if (spn[s1]==1) {
+						if (spn[s2]==1) {
+							lisfroms1s2 = lisupup[ix];
+						} else {
+							lisfroms1s2 = lisupdown[ix];
+						}
+					} else {
+						if (spn[s2]==1) {
+							lisfroms1s2 = lisdownup[ix];
+						} else {
+							lisfroms1s2 = lisdowndown[ix];
+						}
+					}					
+					
+					if (lisfroms1s2) {
+						strb[i] = s2;
+						nac2 += 1;
+						break;
+					}
+
+				} else {
+					p0 = (p1 + p2)/2;
+					if ((pint[p0-1]<p) && (pint[p0]>=p)) {
+						s2 = ((s1 + p0 - 2) % nx) + 1;
+						ix = disx[nx*x1[s1] + x1[s2]];
+						
+						if (spn[s1]==1) {
+							if (spn[s2]==1) {
+								lisfroms1s2 = lisupup[ix];
+							} else {
+								lisfroms1s2 = lisupdown[ix];
+							}
+						} else {
+							if (spn[s2]==1) {
+								lisfroms1s2 = lisdownup[ix];
+							} else {
+								lisfroms1s2 = lisdowndown[ix];
+							}
+						}					
+					
+						if (lisfroms1s2) {
+							strb[i] = s2;
+							nac2 += 1;
+							break;
+						}
+					} else {
+						if (pint[p0]>=p) {
+							p2 = p0;
+						} else {
+							p1 = p0;
+						}
+						goto fromlastelse;
+						//@ see "near" beginning of while(true) statement
+					}
+				}	
+			}
+		}
+	}
+	
+	ar1 += double(nac1)/double(l);
+	if (ntr2!=0) {
+		ar2 += double(nac2)/double(ntr2);
+	}
+
+}
+
+//@----------------------------------------------------------------
+
+void partition() {
+
+	int s1, s2;
+	
+	for (int i=0; i<nx; i++) {
+		lsub[i] =0;
+		con1[i] = false; //$ check the math
+	}
+
+	for (int j=0; j<l; j++) {
+		s1 = str1[i];
+		if (s1!=0) {
+			s2 = str2[i];
+			if (s1==s2) {
+				lsub[s1] += 1;
+				pos1[lls*lsub[s1] + s1] = i;
+				str1[lls*lsub[s1] + s1] = 1;
+				con1[(lls+1)*lsub[s1] + s1] = false; //$ check the math
+			} else if (s1==-1) {
+				lsub[s2] += 1;
+				pos1[lls*lsub[s2] + s2] = i;
+				str1[lls*lsub[s2] + s2] = 2;
+				con1[(lls+1)*lsub[s2] + s2] = false; //$ check the math
+			} else {
+				con1[(lls+1)*lsub[s1] + s1] = true; //$ check the math
+				con1[(lls+1)*lsub[s2] + s2] = true; //$ check the math
+			}
+		}
+	}
+	
+	for (int k=0; k<nx; k++) {
+		if (con1[i]) {
+			con1[(lls+1)*lsub[i] + i] = true; //$ check the math
+		}
+			
+		if (lsub[i]>mlls) {
+			mlls = lsub[i];
+		}
+	}
+
+}
+
+//@----------------------------------------------------------------
+
+void offupdate(int s) {
+	
+	int ii, s, p1, p2, lens, flp, top, nac, nupd;
+
+	nupd = 0;
+	lens = lsub[s];
+	for (int i=0; i<lens; i++) {
+		if (!con1[(lls+1)*i + s]) {
+			nupd += 1;
+			pos[nupd] = i;
+		}
+		opr[i] = str1[lls*i + s];
+	}
+
+	if (lens<2) {
+		if ((nupd == lens) && (!con1[s])) {
+			
+			if (rand_num()<0.75) {
+				spn[s] = -spn[s];
+				ar4 += 1.0;
+				return;
+			} else {
+				return;
+			}
+		
+		} else {
+			return;
+		}
+	}
+
+	nac = 0;
+	flp = 1;
+	for (int j=0; j<(2*nupd-1); j++) {
+		p1 = min(int(rand_num()*nupd)+1, nupd);
+		p1 = pos[p1];
+		p2 = (p1 % lens) + 1;
+		
+		if (opr[p1]==opr[p2]) {
+			opr[p1] = 3 - opr[p1];
+			opr[p2] = 3 - opr[p2];
+			nac += 1;
+		} else {
+			top = opr[p1];
+			opr[p1] = opr[p2];
+			opr[p2] = top;
+		}
+		
+		if (p2<p1) {
+		 flp = -flp;
+		}
+	}
+
+	spn[s] *= flp;
+
+	for (int k=0; k<lens; k++) {
+		ii = pos1[lls*k + s];
+		if (opr[k]==1) {
+			stra[ii] = strb[ii];
+		} else {
+			stra[ii] = -1;
+		}
+	}
+
+	ar3 += double(nac);
+
+	if (lens<2) {
+		if ((nupd == lens) && (!con1[s])) {
+			if (rand_num()<0.75) {
+				spn[s] = -spn[s];
+				ar4 += 1.0;
+			}
+		}
+	}
+
+}
+
+//@----------------------------------------------------------------
+
+void checkl(int step, ofstream& myfile1) {
+
+	int p, dl, l1;
+
+	dl = l/10 + 2;
+	if (nh<(l-dl/2)) {
+		return;
+	}
+
+	l1 = l + dl;
+	for (int i=0; i<l1; i++) {
+		lstr[i] = true;
+	}
+
+	for (int j=0; j<d1; j++) {
+		while (true) {
+			p = min(int(rand_num()*l1) + 1, l1);
+			if (lstr[p]) {
+				lstr[p] = false;
+				break;
+			}
+		}
+	}
+
+	int k = 0;
+	for (int c=0; c<l1; c++) {
+		if (lstr[c]) {
+			k += 1;
+			tmp1[c] = stra[k];
+			tmp2[c] = strb[k];
+		} else {
+			tmp1[c] = 0;
+			tmp2[c] = 0;
+		}
+	}
+
+	l = l1;
+	for (int d=0; d<l; d++) {
+		str1[d] = tmp1[d];
+		str2[d] = tmp2[d];
+	}
+	
+	pvectors();
+	
+	myfile1 << step << " increased l to " << l << "\n\n";
 
 
 }
 
+//@----------------------------------------------------------------
+
+void errcheck() {
+
+	int s1, s2, ix, lisfroms1s2;
+
+	for (int i=0; i<nx; i++) {
+		spn1[i] = spn[i];
+	}
+	
+	for (int j=0; j<l; j++) {
+		s1 = stra[j];
+		s2 = strb[j];
+		if ((s1<-1) || (s1>nx)) {
+			//$ writes "illegal s1 operator" to somewhere seemingly not log.txt
+ 			cout << "Illegal s1 operator on an errcheck() j = " << j << " where s1 = " << s1 << "\n\n";
+			return;
+		}
+		
+		if ((s2<0) || (s2>nx)) {
+			cout << "Illegal s2 operator on an errcheck() j = " << j << " where s2 = " << s2 << "\n\n";
+			return;
+		}
+
+		if (s1>0) {
+			ix = disx(nx*x1[s1] + x1[s2]);
+			if (spn[s1]==1) {
+				if (spn[s2]==1) {
+					lisfroms1s2 = lisupup[ix];
+				} else {
+					lisfroms1s2 = lisupdown[ix];
+				}
+			} else {
+				if (spn[s2]==1) {
+					lisfroms1s2 = lisdownup[ix];
+				} else {
+					lisfroms1s2 = lisdowndown[ix];
+				}
+			}					
+			if (!lisfroms1s2) {
+				cout << "Illegal Ising bond on an errcheck() j = " << j << " where Ising bond = " << lisfroms1s2 << "\n\n";
+				return;
+			}
+		} else if (s1==-1) {
+			spn1[s2] = -spn1[s2];
+		}
+	}
+
+	for (int k=0; k<nx; k++) {
+		if (spn[k]!=spn1[k]) {
+			cout << "Wrong state propagion, spin index = " << k << "\n\n";
+			return;
+		}
+	}
+
+}
 
 //@----------------------------------------------------------------
 
+void writeconf(ofstream& myfile2) {
+	
+	myfile2 << "Lx   = " << nx << "\n\n";
+	myfile2 << "Ht   = " << ht << "\n\n";
+	myfile2 << "beta = " << beta << "\n\n";
+	myfile2 << "L    = " << l << "\n\n";
+	myfile2 << "----------------" << "\n\n\n";
+
+	for (int i=0; i<nx; i++) {
+		myfile2 << i << " " << spn[i] << "\n";
+	}
+
+	myfile2 << "\n" << "----------------" << "\n\n\n";
+
+	for (int j=0; j<l; j++) {
+		myfile2 << stra[i] << " " << strb[i] << "\n";
+	}
+
+	myfile2 << "\n" << "----------------"
+
+}
+
+//@----------------------------------------------------------------
+
+void measure() {
+
+	int s1, s2, mu, nu, ni, nt, nh1, ssum, last;
+	double su1, xu1;
+
+	nu = 0;
+	ni = 0;
+	nt = 0;
+	mu = 0;
+	ssum = 0;
+	last = 0;
+	for (int i=0; i<nx; i++) {
+		mu += spn[i];
+	}
+
+	su1 = double(pow(mu,2));
+	nh1 = 0;
+	for (int j=0; j<l; j++) {
+		s1 = stra[j];
+		if (s1!=0) {
+			nh1 += 1;
+			s2 = strb[j];
+			if (s1==-1) {
+				nt += 1;
+				ssum += (nh1 - last)*mu;
+				last = nh1;
+				spn[s2] = -spn[s2];
+				mu += 2*spn[s2];
+			} else if (s1==s2) {
+				nu += 1;
+			} else {
+				ni += 1;
+			}
+
+			su1 += double(mu*mu);
+		}
+	}
+
+	ssum += (nh1 - last)*mu;
+	su1 = su1/double((nh1 + 1)*nx);
+	if (nh1!=0) {
+		xu1 = double(pow(ssum,2))/(double(nh1*nx)*double(nh1 + 1));
+	} else {
+		xu1 = 0.0;
+	}
+
+	xu1 = double(beta)*(xu1 + su1/double(nh1+1));
+	su += su1;
+	xu += xu1;
+	avnu += double(nu);
+	avni += double(ni);
+	avnt += double(nt);
+	avn1 += double(nh1);
+	avn2 += double(pow(nh1,2));
+	nmsr += 1;
 
 
+}
+
+//@----------------------------------------------------------------
+
+void results(ofstream& myfile3, ofstream& myfile4) {
+
+	double c, e;
+
+	xu = xu/double(nmsr);
+	su = su/double(nmsr);
+	avnu = avnu/double(nmsr);
+	avni = avni/double(nmsr);
+	avnt = avnt/double(nmsr);
+	avn1 = avn1/double(nmsr);
+	avn2 = avn2/double(nmsr);
+	c = (avn2 - pow(avn1,2) - avn1)/double(nx);
+	e = eshft - (avn1 - avnu)/(double(beta)*double(nx));
+	avnu = avnu/(ht*double(beta)*double(nx));
+	avni = eshft/double(nx) - avni/(double(beta)*double(nx));
+	avnt = -avnt/(double(beta)*double(nx));
+
+	myfile3 << su << " " << xu << "\n";
+	myfile4 << e << " " << c << " " << avni << " " << avnt << " " << avnu << "\n";
+
+	zerodat(); 
+
+}
+
+//@----------------------------------------------------------------
+
+void zerodat() {
+	
+	su = 0.0;
+	xu = 0.0;
+	avnu = 0.0;
+	avni = 0.0;
+	avnt1 = 0.0;
+	avn1 = 0.0;
+	avn2 = 0.0;
+	nmsr = 0;
+
+}
+
+//@----------------------------------------------------------------
+
+void writeacc(int msteps, ofstream& myfile5)
+
+	ar1 = ar1/double(msteps);
+	ar2 = ar2/double(msteps);
+	ar3 = ar3/double(msteps);
+	ar4 = ar4/double(msteps);
+	myfile5 << "Diagonal acceptance 1     : " << ar1 << "\n"; 
+	myfile5 << "Diagonal acceptance 2     : " << ar2 << "\n"; 
+	myfile5 << "Off-Diagonal substitions  : " << ar3 << "\n"; 
+	myfile5 << "Spin flips / site         : " << ar4 << "\n"; 
+	myfile5 << "Max lsub                  : " << mlls << "\n\n";
+ 
+}
+
+//@----------------------------------------------------------------

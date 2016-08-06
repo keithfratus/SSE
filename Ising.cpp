@@ -69,7 +69,7 @@ double ht = 0.5;
 
 // transverse field strength
 
-double beta = 0.01;
+double beta = 1.0;
 
 // inverse temperature
 
@@ -91,7 +91,7 @@ double ar1, ar2, ar3, ar4;
 
 //@----------------------------------------------------------------
 
-int isteps = 10000;
+int isteps = 100000;
 
 //@ equilibriation steps
 
@@ -99,7 +99,7 @@ int msteps = 10000;
 
 //@ measurement steps 
 
-int nd;
+int nd = 10000;
 
 // number of runs
 
@@ -152,10 +152,7 @@ int plast[nx+1] = {0};
 
 /*$ //~ last position to search in probability list given INT(R*n3), what is R (random number generator?) and is this similar to lastspinop array? */
 
-bool lisupup[nx/2 + 1] = {0};
-bool lisupdown[nx/2 + 1] = {0};
-bool lisdownup[nx/2 + 1] = {0};
-bool lisdowndown[nx/2 + 1] = {0};
+bool lis[3][3][nx/2 + 1] = {0};
 
 /*$ //~ For allowed spin configuration given distance between sites. ok so original is basically the equivalent of a boolean 5 dimensional array it seems: LOGICAL lis(-1:1,-1:1,0:nx/2,0:ny/2,0:nz/2). I just split into 4 arrays. */
 
@@ -353,6 +350,8 @@ int main() {
 
 			errcheck();
 
+			//cout << i << " " << stra[1] << " " << strb[1] << endl;
+
 		}
 
 	}
@@ -365,6 +364,10 @@ int main() {
 
 	for (int j=1; j<(nd+1); j++) { /*@ so in Sandvik's code the 10 label in the loop is basically another way to have "enddo" in the form of "10 continue" (probably has utility for goto 10 or something)*/
 	
+
+
+	cout << "Loop test " << j << endl;
+
 		ar1 = 0.0;
 		ar2 = 0.0;
 		ar3 = 0.0;
@@ -378,6 +381,8 @@ int main() {
 				measure();
 
 			}
+
+	//cout << "Main test b" << endl;
 
 			if ((k%(msteps/10))==0) { //@ to record every 10 steps
 
@@ -394,6 +399,8 @@ int main() {
 		}
 
 		results(myfile3, myfile4);
+
+		//cout << "Main res test" << endl;
 
 		writeacc(msteps, myfile5);
 
@@ -514,27 +521,27 @@ void isingpart() {
 	int ix; //@note ix used for inside below loop as well
 	double r1, r2, p1, p2;
 
-	for (ix=0; ix<(nx/2+1); ix++) { /*$ //~ note because see lis..[max], test different values perhaps, it's because he introduces a 0 index when fortran arrays are usually 1 to number inclusive both ends, whereas c++ is 0 to number inclusive for 0 and exclusive for number */
+	for (ix=0; ix<(nx/2 +1); ix++) { /*$ //~ note because see lis..[max], test different values perhaps, it's because he introduces a 0 index when fortran arrays are usually 1 to number inclusive both ends, whereas c++ is 0 to number inclusive for 0 and exclusive for number */
 		if (ix==0) {
 			ris[ix] = ht;
-			lisupup[ix] = true;
-			lisupdown[ix] = false;
-			lisdownup[ix] = false;
-			lisdowndown[ix] = true;
+			lis[2][2][ix] = true;
+			lis[2][0][ix] = false;
+			lis[0][2][ix] = false;
+			lis[0][0][ix] = true;
 		} else {
 			r1 = double(ix);
 			r2 = double(nx - ix);
 			ris[ix] = -1.0/(r1*r1) - 1.0/(r2*r2);
 			if (ris[ix]<=0) {
-				lisupup[ix] = true;
-				lisupdown[ix] = false;
-				lisdownup[ix] = false;
-				lisdowndown[ix] = true;
+				lis[2][2][ix] = true;
+				lis[2][0][ix] = false;
+				lis[0][2][ix] = false;
+				lis[0][0][ix] = true;
 			} else {
-				lisupup[ix] = false;
-				lisupdown[ix] = true;
-				lisdownup[ix] = true;
-				lisdowndown[ix] = false;
+				lis[2][2][ix] = false;
+				lis[2][0][ix] = true;
+				lis[0][2][ix] = true;
+				lis[0][0][ix] = false;
 			}
 			ris[ix] = abs(ris[ix]);
 		}
@@ -598,9 +605,7 @@ void diaupdate(MTRand_open& rand_num) {
 
 	int s1, s2, p0, p1, p2, ix, nac1, nac2, ntr2;
 	double p;
-					
-	bool lisfroms1s2;
-		cout << "Begin diagonal update" << "\n\n";
+		//cout << "Begin diagonal update" << "\n\n";
 	nac1 = 0;
 	nac2 = 0;
 	ntr2 = 0;
@@ -643,7 +648,7 @@ void diaupdate(MTRand_open& rand_num) {
 						
 		if (s1>0) {
 					
-		cout << "enter if statement" << endl;
+		//cout << "enter if statement" << endl;
 
 			while (true) {
 				ntr2 += 1;
@@ -658,26 +663,10 @@ void diaupdate(MTRand_open& rand_num) {
 				if (p1==p2) {
 					s2 = ((s1 + p1 - 2) % nx) + 1;
 					ix = disx[x1[s1]][x1[s2]];
-					//@------------------------------------
-					if (spn[s1]==1) {
-						if (spn[s2]==1) {
-							lisfroms1s2 = lisupup[ix];
-						} else {
-							lisfroms1s2 = lisupdown[ix];
-						}
-					} else {
-						if (spn[s2]==1) {
-							lisfroms1s2 = lisdownup[ix];
-						} else {
-							lisfroms1s2 = lisdowndown[ix];
-						}
-					}					
-					//@------------------------------------
-					//@ above is because I'm using four 1D arrays to represent lis 3D array
-					if (lisfroms1s2) {
+					if (lis[spn[s1]+1][spn[s2]+1][ix]) {
 						strb[i] = s2;
 						nac2 += 1;
-						cout << "b1" << endl;
+						//cout << "b1" << endl;
 						break;
 					} else {
 						continue;
@@ -689,26 +678,11 @@ void diaupdate(MTRand_open& rand_num) {
 					} else {
 						s2 = ((s1 + p2 - 2) % nx) + 1;
 					}
-					ix = disx[x1[s1]][x1[s2]];
-
-					if (spn[s1]==1) {
-						if (spn[s2]==1) {
-							lisfroms1s2 = lisupup[ix];
-						} else {
-							lisfroms1s2 = lisupdown[ix];
-						}
-					} else {
-						if (spn[s2]==1) {
-							lisfroms1s2 = lisdownup[ix];
-						} else {
-							lisfroms1s2 = lisdowndown[ix];
-						}
-					}					
-					
-					if (lisfroms1s2) {
+					ix = disx[x1[s1]][x1[s2]];		
+					if (lis[spn[s1]+1][spn[s2]+1][ix]) {
 						strb[i] = s2;
 						nac2 += 1;
-						cout << "b2" << endl;
+						//cout << "b2" << endl;
 						break;
 					} else {
 						continue;
@@ -719,25 +693,10 @@ void diaupdate(MTRand_open& rand_num) {
 					if ((pint[p0-1]<p) && (pint[p0]>=p)) {
 						s2 = ((s1 + p0 - 2) % nx) + 1;
 						ix = disx[x1[s1]][x1[s2]];
-						
-						if (spn[s1]==1) {
-							if (spn[s2]==1) {
-								lisfroms1s2 = lisupup[ix];
-							} else {
-								lisfroms1s2 = lisupdown[ix];
-							}
-						} else {
-							if (spn[s2]==1) {
-								lisfroms1s2 = lisdownup[ix];
-							} else {
-								lisfroms1s2 = lisdowndown[ix];
-							}
-						}					
-					
-						if (lisfroms1s2) {
+						if (lis[spn[s1]+1][spn[s2]+1][ix]) {
 							strb[i] = s2;
 							nac2 += 1;
-							cout << "b3" << endl;
+							//cout << "b3" << endl;
 							break;
 						} else {
 							continue;
@@ -755,7 +714,7 @@ void diaupdate(MTRand_open& rand_num) {
 			}
 		}
 	}
-			cout << "End diagonal update" << "\n\n";
+			//cout << "End diagonal update" << "\n\n";
 	ar1 += double(nac1)/double(l);
 	if (ntr2!=0) {
 		ar2 += double(nac2)/double(ntr2);
@@ -766,7 +725,7 @@ void diaupdate(MTRand_open& rand_num) {
 //@----------------------------------------------------------------
 
 void partition() {
-		cout << "I have this part of the mcstep and am on the partition function" << "\n\n";
+		//cout << "I have this part of the mcstep and am on the partition function" << "\n\n";
 	int s1, s2;
 	
 	for (int i=1; i<(nx+1); i++) {
@@ -889,12 +848,16 @@ void offupdate(int s, MTRand_open& rand_num) {
 
 void checkl(int step, ofstream& myfile1, MTRand_open& rand_num) {
 
+	myfile1 << "MF1 test \n\n";
+
 	int p, dl, l1;
 
 	dl = l/10 + 2;
 	if (nh<(l-dl/2)) {
 		return;
 	}
+
+cout << "test b" << endl;
 
 	l1 = l + dl;
 	for (int i=1; i<(l1+1); i++) {
@@ -932,8 +895,13 @@ void checkl(int step, ofstream& myfile1, MTRand_open& rand_num) {
 	}
 	
 	pvectors();
+
+	//cout << "A screen test" << endl;
 	
 	myfile1 << step << " increased l to " << l << "\n\n";
+	myfile1 << "MF2 test \n\n";
+
+	//cout << "MF2 screen test" << endl;
 
 
 }
@@ -942,7 +910,7 @@ void checkl(int step, ofstream& myfile1, MTRand_open& rand_num) {
 
 void errcheck() {
 
-	int s1, s2, ix, lisfroms1s2;
+	int s1, s2, ix;
 
 	for (int i=1; i<(nx+1); i++) {
 		spn1[i] = spn[i];
@@ -963,22 +931,9 @@ void errcheck() {
 		}
 
 		if (s1>0) {
-			ix = disx[x1[s1]][x1[s2]];
-			if (spn[s1]==1) {
-				if (spn[s2]==1) {
-					lisfroms1s2 = lisupup[ix];
-				} else {
-					lisfroms1s2 = lisupdown[ix];
-				}
-			} else {
-				if (spn[s2]==1) {
-					lisfroms1s2 = lisdownup[ix];
-				} else {
-					lisfroms1s2 = lisdowndown[ix];
-				}
-			}					
-			if (!lisfroms1s2) {
-				cout << "Illegal Ising bond on an errcheck() j = " << j << " where Ising bond = " << lisfroms1s2 << "\n\n";
+			ix = disx[x1[s1]][x1[s2]];			
+			if (!lis[spn[s1]+1][spn[s2]+1][ix]) {
+				cout << "Illegal Ising bond on an errcheck() j = " << j << " where Ising bond = " << lis[spn[s1]+1][spn[s2]+1][ix] << ", ix = " << ix << "\n\n";
 				return;
 			}
 		} else if (s1==-1) {
@@ -1083,6 +1038,10 @@ void measure() {
 //@----------------------------------------------------------------
 
 void results(ofstream& myfile3, ofstream& myfile4) {
+
+	//cout << "res test A" << endl;
+
+	//cout << "su test " << su << endl;
 
 	double c, e;
 

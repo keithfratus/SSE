@@ -99,7 +99,7 @@ int msteps = 10000;
 
 //@ measurement steps 
 
-int nd = 10000;
+int nd = 1;
 
 // number of runs
 
@@ -362,16 +362,15 @@ int main() {
 
 	cout << "I have written down the configuration for that loop" << "\n\n";
 
-	for (int j=1; j<(nd+1); j++) { /*@ so in Sandvik's code the 10 label in the loop is basically another way to have "enddo" in the form of "10 continue" (probably has utility for goto 10 or something)*/
-	
+	for (int j=1; j<(nd+1); j++) {
 
-
-	cout << "Loop test " << j << endl;
+	//cout << "Loop test " << j << endl;
 
 		ar1 = 0.0;
 		ar2 = 0.0;
 		ar3 = 0.0;
 		ar4 = 0.0;
+
 		for (int k=1; k<(msteps+1); k++) {
 
 			mcstep(rand_num);
@@ -445,34 +444,28 @@ void initconf(MTRand_open& rand_num) {
 	int c;
 	
 	l = 20;
-
-	//$ why is 20 hardcoded into here
-
 	nh = 0;
-
 	for (int i=1; i<(ll+1); i++) {
-		stra[i] = 0;
-		strb[i] = 0;
+		stra[i] = 0; //@ gives i of Hij, these are relatively uneeded since already initialized all to 0
+		strb[i] = 0; //@ gives j of Hij, these are relatively uneeded since already initialized all to 0
 	}
-
-	// above initializaton probably not necessary
 	
-	//$ still not explicitly clear about these guys
-
-	for (int j=1; j<(nx+1); j++) { //~ flag mod/removal n3 (flag n3)
+	// above initializaton probably not necessary
+		
+	for (int j=1; j<(nx+1); j++) {
 		spn[j] = -1;
 	}
 
 	//@ setting all spins to -1 first
 
 	for (int k=1; k<(nx/2 + 1); k++) { /*$ note confirm how this is supposed to play out if n3/2=integer or n3/2=floating point=rounded integer in fortran77 version at least */
-		c = min ((int(rand_num()*nx) + 1), nx); //~ flag n3
+		c = min((int(rand_num()*nx) + 1), nx);
 		
 		while (true) {
 			if (spn[c] == -1) {
 				break;
 			}
-			c = min ((int(rand_num()*nx) + 1), nx); //~ flag n3
+			c = min ((int(rand_num()*nx) + 1), nx);
 		}
 
 		// the result of this is to randomly select half of the spins and flip them to +1, seems like an overly complicated way to initialize the spins, but whatever
@@ -481,35 +474,33 @@ void initconf(MTRand_open& rand_num) {
 
 		spn[c] = 1;
 	}
-
+	
 	cout << "Initial spin configuration:\n\n";
 	for (int j=1; j<(nx+1); j++) {
-	  cout << spn[j] << " ";
+		cout << spn[j] << " ";
 	}
 	cout << "\n\n";
-
-
 }
 
 //@----------------------------------------------------------------
 
 void lattice() { //~ lots of omits due to original using 3 dimensions
 
-  // many of these data structures may no longer be necessary/useful in 1D code, but possibly useful to hold on to for higher dimensional generalization
-
+	// many of these data structures may no longer be necessary/useful in 1D code, but possibly useful to hold on to for higher dimensional generalization	
+	
 	int i = 0;
 	for (int ix=1; ix<(nx+1); ix++) {
 		i += 1;		
 		x1[i] = ix;
 	}
-
-	// object below encodes distances on a periodic 1D lattice
 	
+	// object below encodes distances on a periodic 1D lattice
+
 	for (int j=1; j<(nx+1); j++) { //@ (think rows)
 		for (int k=1; k<(nx+1); k++) { //@ (think cols)
 			disx[k][j] = abs(k - j);
-			if (disx[k][j]>(nx/2)) { 
-				disx[k][j] = nx - disx[k][j]; /*@ significance of this, why are we ignoring certain distances and how do odd/even choices affect this, the nx/2 doesn't even simply just chop things in half, there isn't an equal amount of different distances. */
+			if ((disx[k][j])>(nx/2)) { 
+				disx[k][j] = nx - disx[k][j]; /*@ think 1D chain with PBC so it's like a ring which means max disx is nx/2 */
 			}
 		}
 	}
@@ -518,10 +509,10 @@ void lattice() { //~ lots of omits due to original using 3 dimensions
 
 //@----------------------------------------------------------------
 
-void pvectors() { /*$ $$$$$$$$ Note: Sandvik uses 0 to l essentially for ap1[i] array, but 1 to l+1 for dp1[i]? Careful with that? I'm using 0 to l and 0 to l for both for now. */
+void pvectors() {
 
 	for (int i=0; i<l; i++ ) { //@ see above comment
-		ap1[i] = ht * beta * double(nx) / double(l - i);
+		ap1[i] = ht * beta * double(nx) / (double(l - i));
 	} 
 
 	for (int j=1; j<(l+1); j++) {
@@ -537,7 +528,7 @@ void isingpart() {
 	int ix; //@note ix used for inside below loop as well
 	double r1, r2, p1, p2;
 
-	for (ix=0; ix<(nx/2 +1); ix++) { /*$ //~ note because see lis..[max], test different values perhaps, it's because he introduces a 0 index when fortran arrays are usually 1 to number inclusive both ends, whereas c++ is 0 to number inclusive for 0 and exclusive for number */
+	for (ix=0; ix<(nx/2 + 1); ix++) { /*$ //~ note because see lis..[max], test different values perhaps, it's because he introduces a 0 index when fortran arrays are usually 1 to number inclusive both ends, whereas c++ is 0 to number inclusive for 0 and exclusive for number */
 		if (ix==0) {
 			ris[ix] = ht;
 			lis[2][2][ix] = true;
@@ -547,7 +538,7 @@ void isingpart() {
 		} else {
 			r1 = double(ix);
 			r2 = double(nx - ix);
-			ris[ix] = -1.0/(r1*r1) - 1.0/(r2*r2);
+			ris[ix] = (-1.0)/(r1*r1) - 1.0/(r2*r2);
 			if (ris[ix]<=0) {
 				lis[2][2][ix] = true;
 				lis[2][0][ix] = false;
@@ -569,7 +560,7 @@ void isingpart() {
 	for (int i=2; i<(nx+1); i++) {
 		ix = disx[1][x1[i]]; /*@ to be clear, this is finding the distance between the first site (site x1[0]) and every other site (site x1[i]), note: 1 to nx*/
 		pint[i] = pint[i-1] + ris[ix];
-		eshft += ris[ix]/2;
+		eshft += (ris[ix]/2);
 	}
 	
 	for (int j=1; j<(nx+1); j++) {
@@ -628,21 +619,21 @@ void diaupdate(MTRand_open& rand_num) {
 	for (int i=1; i<(l+1); i++) {
 		s1 = stra[i];
 		s2 = strb[i];
-		if (s1==0) {
+		if (s1==0) { //@ H00
 			p = ap1[nh];
 			if (p>=1) {
 				stra[i] = min(int(rand_num()*nx)+1, nx);
 				strb[i] = stra[i];
 				nh += 1;
 				nac1 += 1;
-			} else if (rand_num()<p) {
+			} else if ((rand_num())<p) {
 				stra[i] = min(int(rand_num()*nx)+1, nx);
 				strb[i] = stra[i];
 				nh += 1;
 				nac1 += 1;
 			}
 			
-		} else if (s1==s2) {
+		} else if (s1==s2) { //@ Hii
 			p = dp1[nh];
 			if (p>=1) {
 				stra[i] = 0;
@@ -656,13 +647,13 @@ void diaupdate(MTRand_open& rand_num) {
 				nac1 += 1;
 			}
 					
-		} else if (s1==-1) {
+		} else if (s1==-1) { //@ H(-1)j
 			spn[s2] = -spn[s2];
 		}
 					
-		s1 = stra[i];
+		s1 = stra[i]; //$ why did he redefine s1
 						
-		if (s1>0) {
+		if (s1>0) { //@ doesn't this work on Hii as well if i>0
 					
 		//cout << "enter if statement" << endl;
 
@@ -679,7 +670,7 @@ void diaupdate(MTRand_open& rand_num) {
 				if (p1==p2) {
 					s2 = ((s1 + p1 - 2) % nx) + 1;
 					ix = disx[x1[s1]][x1[s2]];
-					if (lis[spn[s1]+1][spn[s2]+1][ix]) {
+					if ((lis[spn[s1]+1][spn[s2]+1][ix])) {
 						strb[i] = s2;
 						nac2 += 1;
 						//cout << "b1" << endl;
@@ -695,7 +686,7 @@ void diaupdate(MTRand_open& rand_num) {
 						s2 = ((s1 + p2 - 2) % nx) + 1;
 					}
 					ix = disx[x1[s1]][x1[s2]];		
-					if (lis[spn[s1]+1][spn[s2]+1][ix]) {
+					if ((lis[spn[s1]+1][spn[s2]+1][ix])) {
 						strb[i] = s2;
 						nac2 += 1;
 						//cout << "b2" << endl;
@@ -706,10 +697,10 @@ void diaupdate(MTRand_open& rand_num) {
 
 				} else {
 					p0 = (p1 + p2)/2;
-					if ((pint[p0-1]<p) && (pint[p0]>=p)) {
+					if (((pint[p0-1])<p)&&((pint[p0])>=p)) {
 						s2 = ((s1 + p0 - 2) % nx) + 1;
 						ix = disx[x1[s1]][x1[s2]];
-						if (lis[spn[s1]+1][spn[s2]+1][ix]) {
+						if ((lis[spn[s1]+1][spn[s2]+1][ix])) {
 							strb[i] = s2;
 							nac2 += 1;
 							//cout << "b3" << endl;
@@ -718,7 +709,7 @@ void diaupdate(MTRand_open& rand_num) {
 							continue;
 						}
 					} else {
-						if (pint[p0]>=p) {
+						if ((pint[p0])>=p) {
 							p2 = p0;
 						} else {
 							p1 = p0;
@@ -746,7 +737,7 @@ void partition() {
 	
 	for (int i=1; i<(nx+1); i++) {
 		lsub[i] =0;
-		con1[0][i] = false; //$ check the math
+		con1[0][i] = false;
 	}
 
 	for (int j=1; j<(l+1); j++) {
@@ -757,22 +748,22 @@ void partition() {
 				lsub[s1] += 1;
 				pos1[lsub[s1]][s1] = j;
 				str1[lsub[s1]][s1] = 1;
-				con1[lsub[s1]][s1] = false; //$ check the math
-			} else if (s1==-1) {
+				con1[lsub[s1]][s1] = false;
+			} else if (s1==(-1)) {
 				lsub[s2] += 1;
 				pos1[lsub[s2]][s2] = j;
 				str1[lsub[s2]][s2] = 2;
-				con1[lsub[s2]][s2] = false; //$ check the math
+				con1[lsub[s2]][s2] = false;
 			} else {
-				con1[lsub[s1]][s1] = true; //$ check the math
-				con1[lsub[s2]][s2] = true; //$ check the math
+				con1[lsub[s1]][s1] = true;
+				con1[lsub[s2]][s2] = true;
 			}
 		}
 	}
 	
 	for (int k=1; k<(nx+1); k++) {
 		if (con1[0][k]) {
-			con1[lsub[k]][k] = true; //$ check the math
+			con1[lsub[k]][k] = true;
 		}
 			
 		if (lsub[k]>mlls) {
@@ -791,7 +782,7 @@ void offupdate(int s, MTRand_open& rand_num) {
 	nupd = 0;
 	lens = lsub[s];
 	for (int i=1; i<(lens+1); i++) {
-		if (!con1[i][s]) {
+		if ((!con1[i][s])) {
 			nupd += 1;
 			pos[nupd] = i;
 		}
@@ -799,7 +790,7 @@ void offupdate(int s, MTRand_open& rand_num) {
 	}
 
 	if (lens<2) {
-		if ((nupd == lens) && (!con1[0][s])) {
+		if ((nupd == lens)&&((!con1[0][s]))) { //$ ?
 			
 			if (rand_num()<0.75) {
 				spn[s] = -spn[s];
@@ -828,7 +819,7 @@ void offupdate(int s, MTRand_open& rand_num) {
 		} else {
 			top = opr[p1];
 			opr[p1] = opr[p2];
-			opr[p2] = top;
+			opr[p2] = top; //@ why even have top if this is all its used for?
 		}
 		
 		if (p2<p1) {
@@ -849,12 +840,10 @@ void offupdate(int s, MTRand_open& rand_num) {
 
 	ar3 += double(nac);
 
-	if (lens<2) {
-		if ((nupd == lens) && (!con1[0][s])) {
-			if (rand_num()<0.75) {
-				spn[s] = -spn[s];
-				ar4 += 1.0;
-			}
+	if ((nupd == lens)&&((!con1[0][s]))) {
+		if (rand_num()<0.75) {
+			spn[s] = -spn[s];
+			ar4 += 1.0;
 		}
 	}
 
@@ -864,16 +853,16 @@ void offupdate(int s, MTRand_open& rand_num) {
 
 void checkl(int step, ofstream& myfile1, MTRand_open& rand_num) {
 
-	myfile1 << "MF1 test \n\n";
+	//myfile1 << "MF1 test \n\n";
 
 	int p, dl, l1;
 
 	dl = l/10 + 2;
-	if (nh<(l-dl/2)) {
+	if (nh<(l - dl/2)) {
 		return;
 	}
 
-cout << "test b" << endl;
+//cout << "test b" << endl;
 
 	l1 = l + dl;
 	for (int i=1; i<(l1+1); i++) {
@@ -915,7 +904,7 @@ cout << "test b" << endl;
 	//cout << "A screen test" << endl;
 	
 	myfile1 << step << " increased l to " << l << "\n\n";
-	myfile1 << "MF2 test \n\n";
+	//myfile1 << "MF2 test \n\n";
 
 	//cout << "MF2 screen test" << endl;
 
@@ -935,20 +924,20 @@ void errcheck() {
 	for (int j=1; j<(l+1); j++) {
 		s1 = stra[j];
 		s2 = strb[j];
-		if ((s1<-1) || (s1>nx)) {
+		if ((s1<-1)||(s1>nx)) {
 			//$ writes "illegal s1 operator" to somewhere seemingly not log.txt
  			cout << "Illegal s1 operator on an errcheck() j = " << j << " where s1 = " << s1 << "\n\n";
 			return;
 		}
 		
-		if ((s2<0) || (s2>nx)) {
+		if ((s2<0)||(s2>nx)) {
 			cout << "Illegal s2 operator on an errcheck() j = " << j << " where s2 = " << s2 << "\n\n";
 			return;
 		}
 
 		if (s1>0) {
 			ix = disx[x1[s1]][x1[s2]];			
-			if (!lis[spn[s1]+1][spn[s2]+1][ix]) {
+			if ((!lis[spn1[s1]+1][spn1[s2]+1][ix])) {
 				cout << "Illegal Ising bond on an errcheck() j = " << j << " where Ising bond = " << lis[spn[s1]+1][spn[s2]+1][ix] << ", ix = " << ix << "\n\n";
 				return;
 			}

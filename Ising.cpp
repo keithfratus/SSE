@@ -454,6 +454,8 @@ void initconf(MTRand_open& rand_num) {
 		stra[i] = 0;
 		strb[i] = 0;
 	}
+
+	// above initializaton probably not necessary
 	
 	//$ still not explicitly clear about these guys
 
@@ -473,21 +475,35 @@ void initconf(MTRand_open& rand_num) {
 			c = min ((int(rand_num()*nx) + 1), nx); //~ flag n3
 		}
 
+		// the result of this is to randomly select half of the spins and flip them to +1, seems like an overly complicated way to initialize the spins, but whatever
+
 /*$ NOTE: so this one may be tricky or I may be over thinking it. at first I just thought it was a simple goto continue basically, but he doesn't place to "goto 10"'s 10 at the end of the loop, he puts it at the first min(,) statement. which I believe means the code wants to repeat finding another random site that IS spn[c] = -1 and flip that to spn[c] 1 so that EXACTLY (if n3 is an even number, roughly half if n3 is odd) half of the spins are +1 (spin up) and half the spins are (-1) after randomly choosing spins and flipping or leaving the same +1 (spin up), until this is true. So I'm going to simply implement a forever loop that accomplishes that for now (apparently the internet hates goto statements) unless I think of something better. */
 
 		spn[c] = 1;
 	}
+
+	cout << "Initial spin configuration:\n\n";
+	for (int j=1; j<(nx+1); j++) {
+	  cout << spn[j] << " ";
+	}
+	cout << "\n\n";
+
 
 }
 
 //@----------------------------------------------------------------
 
 void lattice() { //~ lots of omits due to original using 3 dimensions
+
+  // many of these data structures may no longer be necessary/useful in 1D code, but possibly useful to hold on to for higher dimensional generalization
+
 	int i = 0;
 	for (int ix=1; ix<(nx+1); ix++) {
 		i += 1;		
 		x1[i] = ix;
 	}
+
+	// object below encodes distances on a periodic 1D lattice
 	
 	for (int j=1; j<(nx+1); j++) { //@ (think rows)
 		for (int k=1; k<(nx+1); k++) { //@ (think cols)

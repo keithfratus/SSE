@@ -1,0 +1,1 @@
+g++ -O3 Isingloop.cpp MT/mtrand.cpp -o SSEIsingN32

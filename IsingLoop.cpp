@@ -14,6 +14,7 @@
 //@		2. Removed random number generator parts and using MTRand
 //@		3. openlog(), closelog() functions.
 //@   4. readconf() not used because doesn't seem like we'd want to?
+//@   5. removed quite a
 //@==================================================================//
 
 /*@ So obviously I'm using quite a bit of global variables. This is mostly because it's
@@ -37,21 +38,9 @@ using namespace std;
 
 //@----------------------------------------------------------------
 
-const int nx = 8;
+const int nx = 32;
 
 //@ size in x-direction (since 1d, it's only direction)
-
-//~ int ny = 1;
-
-//~ size in y-direction (remove later if easily translate into just 1d considerations)
-
-//~ int nz = 1;
-
-//~ size in z-direction (remove later if easily translate into just 1d considerations)
-
-//~ int n3 = nx*ny*nz;
-
-//~ total number of spins (remove later if easily translate into just 1d considerations)
 
 const int ll = 10000;
 
@@ -59,17 +48,27 @@ const int ll = 10000;
 
 const int lls = 500;
 
-/*$ maximum length of subsequence, what does this mean */
+//$ maximum length of subsequence?
 
-int l;
+int l = 20;
 
-//@ expansion truncation, or hamiltonian string cut off max, note: hard-coded to be 20 in initconf()
+//@ expansion truncation, or hamiltonian string cut off max
 
 double ht = 0.5;
 
 // transverse field strength
 
-double beta = 1.0;
+double temp;
+
+const double start_temp = 0.5;
+
+const double temp_step = 0.01;
+
+const int num_temp_step = 500;
+
+const double final_temp = start_temp + temp_step*(num_temp_step - 1);
+
+double beta;
 
 // inverse temperature
 
@@ -77,7 +76,7 @@ double eshft;
 
 /*$ sum of all constants added to the hamiltonian (see hamiltonian equations perhaps?) */
 
-int nh;
+int nh = 0;
 
 //@ current expansion order of n, or number of non-identity hamiltonians in hamiltonian string
 
@@ -95,7 +94,7 @@ int isteps = 100000;
 
 //@ equilibriation steps
 
-int msteps = 10000;
+int msteps = 2000000;
 
 //@ measurement steps 
 
@@ -110,6 +109,10 @@ int nmsr;
 double su, xu, avnu, avni, avnt, avn1, avn2;
 
 //$
+
+double av_magpow2;
+
+//@ For av_magpow2
 
 //@----------------------------------------------------------------
 
@@ -254,7 +257,7 @@ void measure();
 
 /*$ measuring observables looks like. note: uses a common which seems like fortran77's version of a sort of pass by reference across different fortran .f files*/
 
-void results(ofstream& myfile3, ofstream& myfile4);
+void results(ofstream& myfile3, ofstream& myfile4, ofstream& myfile6, ofstream& myfile7);
 
 /*@ writes calculated observables into (10) mag.dat for su and xu, (10) enr.dat for e, c, avni, avnt, and avnu */
 
@@ -313,105 +316,129 @@ void offupdate(int s, MTRand_open& rand_num);
 int main() {
 
 	ofstream myfile1; //@ Initialize the write-data-to-file.
-	myfile1.open ("log.txt"); //@ Name and begin the write-data-to-file.
+	myfile1.open ("logN32.txt"); //@ Name and begin the write-data-to-file.
 	ofstream myfile2;
-	myfile2.open ("writeconf.txt");
+	myfile2.open ("writeconfN32.txt");
 	ofstream myfile3;
-	myfile3.open ("mag.txt");
+	myfile3.open ("magN32.txt");
 	ofstream myfile4;
-	myfile4.open ("enr.txt");
+	myfile4.open ("enrN32.txt");
 	ofstream myfile5;
-	myfile5.open ("acc.txt");
+	myfile5.open ("accN32.txt");
+	ofstream myfile6;
+	myfile6.open ("SUvstempN32.txt");
+	ofstream myfile7;
+	myfile7.open ("mag^2vstempN32.txt");
 
 	unsigned long int time_seed = time(NULL);
 	MTRand_open rand_num(time_seed);
 
 	//@ random number generator (0,1). Note: omitted RAN(), INITRANDOM, and WRITERAND(rndf)
-
-	init(rand_num);
-
-	//@ consider Sandvik's (in == 0)
-
-	cout << "I have made a configuration and have started first mcstep loop" << "\n\n";
-
-	for (int i=1; i<(isteps+1); i++) {
-
-		mcstep(rand_num);
-
-		checkl(i, myfile1, rand_num);
-
-		if ((i%(isteps/10))==0) { //@ to record every 10 steps
 	
-			//@ openlog();
+	for (int y=0; y<num_temp_step; y++) {
 
-			myfile1 << "Done equilibriation step: " << i << "\n\n";	
+		cout << y << "\n\n";
+
+  	temp = start_temp + y*temp_step;
 		
-			//@ closelog();
+		//@ start temp loop
 
-			errcheck();
+    beta = 1.0/temp;
 
-			//cout << i << " " << stra[1] << " " << strb[1] << endl;
+    cout << "Now processing T = " << temp << ", beta = " << beta << "\n\n";
 
-		}
+   	myfile6 << temp << " ";
+		myfile7 << temp << " ";
+		
+		init(rand_num);
 
-	}
+		//@ consider Sandvik's (in == 0)
 
-	cout << "I have finished the first mcstep loops, error checked, and etc." << "\n\n";
+		//@ cout << "I have made a configuration and have started first mcstep loop" << "\n\n";
 
-	writeconf(myfile2);
-
-	cout << "I have written down the configuration for that loop" << "\n\n";
-
-	for (int j=1; j<(nd+1); j++) {
-
-	//cout << "Loop test " << j << endl;
-
-		ar1 = 0.0;
-		ar2 = 0.0;
-		ar3 = 0.0;
-		ar4 = 0.0;
-
-		for (int k=1; k<(msteps+1); k++) {
+		for (int i=1; i<(isteps+1); i++) {
 
 			mcstep(rand_num);
 
-			if ((k%2)==0) {
+			checkl(i, myfile1, rand_num);
 
-				measure();
-
-			}
-
-	//cout << "Main test b" << endl;
-
-			if ((k%(msteps/10))==0) { //@ to record every 10 steps
-
+			if ((i%(isteps/10))==0) { //@ to record every 10 steps
+	
 				//@ openlog();
 
-				myfile1 << "Done measurement step: " << j << ", " << k << "\n\n";
-
+				myfile1 << "Done equilibriation step: " << i << "\n\n";	
+		
 				//@ closelog();
 
 				errcheck();
 
+				//cout << i << " " << stra[1] << " " << strb[1] << endl;
+
 			}
 
 		}
 
-		results(myfile3, myfile4);
-
-		//cout << "Main res test" << endl;
-
-		writeacc(msteps, myfile5);
+		//@ cout << "I have finished the first mcstep loops, error checked, and etc." << "\n\n";
 
 		writeconf(myfile2);
 
+		//@ cout << "I have written down the configuration for that loop" << "\n\n";
+
+		for (int j=1; j<(nd+1); j++) {
+
+		//@ cout << "Loop test " << j << endl;
+
+			ar1 = 0.0;
+			ar2 = 0.0;
+			ar3 = 0.0;
+			ar4 = 0.0;
+
+			for (int k=1; k<(msteps+1); k++) {
+
+				mcstep(rand_num);
+
+				if ((k%2)==0) {
+
+					measure();
+
+				}
+
+		//@ cout << "Main test b" << endl;
+
+				if ((k%(msteps/10))==0) { //@ to record every 10 steps
+
+					//@ openlog();
+
+					myfile1 << "Done measurement step: " << j << ", " << k << "\n\n";
+
+					//@ closelog();
+
+					errcheck();
+
+				}
+
+			}
+
+			results(myfile3, myfile4, myfile6, myfile7);
+
+			//@ cout << "Main res test" << endl;
+
+			writeacc(msteps, myfile5);
+
+			writeconf(myfile2);
+
+		}
+		
 	}
+
 	cout << "I have finished the second loop, wrote results, and etc." << "\n\n";
 	myfile1.close(); //@ Finish the write-data-to-file.
 	myfile2.close();
 	myfile3.close();
 	myfile4.close();
 	myfile5.close();
+	myfile6.close();
+	myfile7.close();
 
 	return 0;
 
@@ -442,21 +469,12 @@ void init(MTRand_open& rand_num) {
 void initconf(MTRand_open& rand_num) {
 	
 	int c;
-	
-	l = 20;
-	nh = 0;
-	for (int i=1; i<(ll+1); i++) {
-		stra[i] = 0; //@ gives i of Hij, these are relatively uneeded since already initialized all to 0
-		strb[i] = 0; //@ gives j of Hij, these are relatively uneeded since already initialized all to 0
-	}
-	
-	// above initializaton probably not necessary
 		
 	for (int j=1; j<(nx+1); j++) {
 		spn[j] = -1;
 	}
 
-	//@ setting all spins to -1 first
+	//@ setting all spins to -1 first, could use the fill_n thing, but I'll leave it as is at least for now
 
 	for (int k=1; k<(nx/2 + 1); k++) { /*$ note confirm how this is supposed to play out if n3/2=integer or n3/2=floating point=rounded integer in fortran77 version at least */
 		c = min((int(rand_num()*nx) + 1), nx);
@@ -475,11 +493,11 @@ void initconf(MTRand_open& rand_num) {
 		spn[c] = 1;
 	}
 	
-	cout << "Initial spin configuration:\n\n";
-	for (int j=1; j<(nx+1); j++) {
-		cout << spn[j] << " ";
-	}
-	cout << "\n\n";
+	//@ cout << "Initial spin configuration:\n\n";
+	//@ for (int j=1; j<(nx+1); j++) {
+		//@ cout << spn[j] << " ";
+	//@ }
+	//@ cout << "\n\n";
 }
 
 //@----------------------------------------------------------------
@@ -983,7 +1001,7 @@ void writeconf(ofstream& myfile2) {
 void measure() {
 
 	int s1, s2, mu, nu, ni, nt, nh1, ssum, last;
-	double su1, xu1;
+	double su1, xu1, mag;
 
 	nu = 0;
 	ni = 0;
@@ -994,6 +1012,12 @@ void measure() {
 	for (int i=1; i<(nx+1); i++) {
 		mu += spn[i];
 	}
+
+	mag = double(mu);
+	mag = mag/double(nx);
+	mag = pow(mag, 2.0);
+
+	//@ for av_magpow2
 
 	su1 = double(pow(mu,2));
 	nh1 = 0;
@@ -1036,12 +1060,14 @@ void measure() {
 	avn2 += double(pow(nh1,2));
 	nmsr += 1;
 
+	av_magpow2 += mag;
+	//@ for av_magpow2
 
 }
 
 //@----------------------------------------------------------------
 
-void results(ofstream& myfile3, ofstream& myfile4) {
+void results(ofstream& myfile3, ofstream& myfile4, ofstream& myfile6, ofstream& myfile7) {
 
 	//cout << "res test A" << endl;
 
@@ -1062,8 +1088,18 @@ void results(ofstream& myfile3, ofstream& myfile4) {
 	avni = eshft/double(nx) - avni/(double(beta)*double(nx));
 	avnt = -avnt/(double(beta)*double(nx));
 
+	av_magpow2 = av_magpow2/double(nmsr);
+
 	myfile3 << su << " " << xu << "\n";
 	myfile4 << e << " " << c << " " << avni << " " << avnt << " " << avnu << "\n";
+
+	if (temp == final_temp){
+		myfile6 << su;
+		myfile7 << av_magpow2;
+	} else {
+		myfile6 << su << "\n";
+		myfile7 << av_magpow2 << "\n";
+	}
 
 	zerodat(); 
 
@@ -1081,6 +1117,7 @@ void zerodat() {
 	avn1 = 0.0;
 	avn2 = 0.0;
 	nmsr = 0;
+	av_magpow2 = 0.0;
 
 }
 

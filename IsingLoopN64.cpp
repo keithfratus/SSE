@@ -349,7 +349,7 @@ int main() {
 
    	myfile6 << temp << " ";
 		myfile7 << temp << " ";
-		
+		 
 		init(rand_num);
 
 		//@ consider Sandvik's (in == 0)

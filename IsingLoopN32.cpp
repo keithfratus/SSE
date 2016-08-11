@@ -375,7 +375,7 @@ int main() {
 				//cout << i << " " << stra[1] << " " << strb[1] << endl;
 
 			}
-
+ 
 		}
 
 		//@ cout << "I have finished the first mcstep loops, error checked, and etc." << "\n\n";

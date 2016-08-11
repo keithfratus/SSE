@@ -580,6 +580,7 @@ void isingpart() {
 				}
 			}
 		}
+
 		if (k==nx) {
 			plast[k] = nx;
 		} else {
@@ -791,7 +792,6 @@ void offupdate(int s, MTRand_open& rand_num) {
 
 	if (lens<2) {
 		if ((nupd == lens)&&((!con1[0][s]))) { //$ ?
-			
 			if (rand_num()<0.75) {
 				spn[s] = -spn[s];
 				ar4 += 1.0;
@@ -799,7 +799,6 @@ void offupdate(int s, MTRand_open& rand_num) {
 			} else {
 				return;
 			}
-		
 		} else {
 			return;
 		}

@@ -284,14 +284,6 @@ void offupdate(int s, MTRand_open& rand_num);
 
 //$
 
-void writeopen(ofstream& myfileA, ofstream& myfileB, ofstream& myfileC, ofstream& myfileD, ofstream& myfileE, ofstream& myfileF, ofstream& myfileG);
-
-//@ for writing things to file
-
-void setallzero();
-
-//@ for setting everything to 0
-
 //@----------------------------------------------------------------
 
 //@----------------------------------------------------------------
@@ -302,22 +294,26 @@ void setallzero();
 
 int main() {
 
-	ofstream myfile1;
+	ofstream myfile1; //@ Initialize the write-data-to-file.
+	myfile1.open ("logN16_2.txt"); //@ Name and begin the write-data-to-file.
 	ofstream myfile2;
+	myfile2.open ("writeconfN16_2.txt");
 	ofstream myfile3;
+	myfile3.open ("magN16_2.txt");
 	ofstream myfile4;
+	myfile4.open ("enrN16_2.txt");
 	ofstream myfile5;
+	myfile5.open ("accN16_2.txt");
 	ofstream myfile6;
+	myfile6.open ("SUvstempN16_2.txt");
 	ofstream myfile7;
-
-	writeopen (myfile1, myfile2, myfile3, myfile4, myfile5, myfile6, myfile7);
-
-	unsigned long int time_seed = time(NULL);
-	MTRand_open rand_num(time_seed);
-
-	//@ random number generator (0,1). Note: omitted RAN(), INITRANDOM, and WRITERAND(rndf)
+	myfile7.open ("mag^2vstempN16_2.txt");
 	
 	for (int y=0; y<num_temp_step; y++) {
+
+		unsigned long int time_seed = time(NULL);
+		MTRand_open rand_num(time_seed);
+		//@ random number generator (0,1). Note: omitted RAN(), INITRANDOM, and WRITERAND(rndf)
 
   	temp = start_temp + y*temp_step;
 		
@@ -330,7 +326,36 @@ int main() {
 
    	myfile6 << temp << " ";
 		myfile7 << temp << " ";
+
+		mlls = 0;
+		ar1 = 0.0;
+		ar2 = 0.0;
+		ar3 = 0.0;
+ 		ar4 = 0.0;
+		/*@ Important: setting variables that need to be 0 (or 0.0 if a double) to that between temperatures!!*/
 		
+		for (int c=0; c<(ll+1); c++) {
+			ap1[c] = 0.0;
+			dp1[c] = 0.0;
+			tmp1[c] = 0;
+			tmp2[c] = 0;
+			lstr[c] = 0;
+		}
+		for (int d=0; d<(nx+1); d++) {
+			pfrst[d] = 0;
+			plast[d] = 0;
+			lsub[d] = 0;
+			spn1[d] = 0;
+			for (int f=0; f<(lls+1); f++) {
+				pos1[f][d] = 0;
+				str1[f][d] = 0;
+				con1[f][d] = 0;
+				pos[f] = 0;
+				opr[f] = 0;
+			}
+		}
+		/*@ Important: setting arrays that need to be 0 (or 0.0 if a double) to that between temperatures!!*/
+		//****************** check all variables first use
 		init(rand_num);
 
 		for (int i=1; i<(isteps+1); i++) {
@@ -385,20 +410,9 @@ int main() {
 			writeconf(myfile2);
 
 		}
-
+		
 	cout << "Completed temp step of temp = " << temp << ", beta = " << beta << "\n\n";
 	myfile1 << "Completed temp step of temp = " << temp << ", beta = " << beta << "\n\n";
-
-	l = 20;
-	mlls = 0;
-	ar1 = 0.0;
-	ar2 = 0.0;
-	ar3 = 0.0;
-	ar4 = 0.0;
-	//@ Added this in because perhaps it's relevant? l wouldn't restart between temp loops
-
-	setallzero();
-	//$
 
 	}
 
@@ -439,6 +453,14 @@ void initconf(MTRand_open& rand_num) {
 	
 	int c;
 		
+	l = 20;
+	nh = 0;
+
+	for (int i=1; i<(ll+1); i++) {
+		stra[i] = 0;
+		strb[i] = 0;
+	}
+	
 	for (int j=1; j<(nx+1); j++) {
 		spn[j] = -1;
 	}
@@ -827,7 +849,9 @@ void offupdate(int s, MTRand_open& rand_num) {
 void checkl(int step, ofstream& myfile1, MTRand_open& rand_num) {
 
 	int p, dl, l1;
-
+	if ((step%500)==0){
+		cout << "step = " << step << " has l = " << l <<  " and has nh = " << nh << "\n\n";
+	}
 	dl = l/10 + 2;
 	if (nh<(l - dl/2)) {
 		return;
@@ -867,9 +891,9 @@ void checkl(int step, ofstream& myfile1, MTRand_open& rand_num) {
 		stra[d] = tmp1[d];
 		strb[d] = tmp2[d];
 	}
-	
+
 	pvectors();
-	
+
 	myfile1 << step << " increased l to " << l << "\n\n";
 
 }
@@ -900,7 +924,7 @@ void errcheck() {
 		if (s1>0) {
 			ix = disx[x1[s1]][x1[s2]];			
 			if ((!lis[spn1[s1]+1][spn1[s2]+1][ix])) {
-				cout << "Illegal Ising bond on an errcheck() j = " << j << " where Ising bond = " << lis[spn1[s1]+1][spn1[s2]+1][ix] << ", ix = " << ix << "\n\n";
+				cout << "Illegal Ising bond on an errcheck() j = " << j << " where Ising bond = " << lis[spn[s1]+1][spn[s2]+1][ix] << ", ix = " << ix << "\n\n";
 				return;
 			}
 		} else if (s1==-1) {
@@ -1074,97 +1098,6 @@ void writeacc(int msteps, ofstream& myfile5) {
 	myfile5 << "Spin flips / site         : " << ar4 << "\n"; 
 	myfile5 << "Max lsub                  : " << mlls << "\n\n";
  
-}
-
-//@----------------------------------------------------------------
-
-void writeopen(ofstream& myfileA, ofstream& myfileB, ofstream& myfileC, ofstream& myfileD, ofstream& myfileE, ofstream& myfileF, ofstream& myfileG) {
-
-	if (nx<=16) {
-		myfileA.open ("log<=16.txt");
-		myfileB.open ("writeconf<=16.txt");
-		myfileC.open ("mag<=16.txt");
-		myfileD.open ("enr<=16.txt");
-		myfileE.open ("acc<=16.txt");
-		myfileF.open ("SUvstemp<=16.txt");
-		myfileG.open ("mag^2vstemp<=16.txt");
-	} else if (nx<=32) {
-		myfileA.open ("log<=32.txt");
-		myfileB.open ("writeconf<=32.txt");
-		myfileC.open ("mag<=32.txt");
-		myfileD.open ("enr<=32.txt");
-		myfileE.open ("acc<=32.txt");
-		myfileF.open ("SUvstemp<=32.txt");
-		myfileG.open ("mag^2vstemp<=32.txt");
-	} else if (nx<=64) {
-		myfileA.open ("log<=64.txt");
-		myfileB.open ("writeconf<=64.txt");
-		myfileC.open ("mag<=64.txt");
-		myfileD.open ("enr<=64.txt");
-		myfileE.open ("acc<=64.txt");
-		myfileF.open ("SUvstemp<=64.txt");
-		myfileG.open ("mag^2vstemp<=64.txt");
-	} else if (nx<=128) {
-		myfileA.open ("log<=128.txt");
-		myfileB.open ("writeconf<=128.txt");
-		myfileC.open ("mag<=128.txt");
-		myfileD.open ("enr<=128.txt");
-		myfileE.open ("acc<=128.txt");
-		myfileF.open ("SUvstemp<=128.txt");
-		myfileG.open ("mag^2vstemp<=128.txt");
-	} else if (nx<=256) {
-		myfileA.open ("log<=256.txt");
-		myfileB.open ("writeconf<=256.txt");
-		myfileC.open ("mag<=256.txt");
-		myfileD.open ("enr<=256.txt");
-		myfileE.open ("acc<=256.txt");
-		myfileF.open ("SUvstemp<=256.txt");
-		myfileG.open ("mag^2vstemp<=256.txt");
-	} else if (nx<=512) {
-		myfileA.open ("log<=512.txt");
-		myfileB.open ("writeconf<=512.txt");
-		myfileC.open ("mag<=512.txt");
-		myfileD.open ("enr<=512.txt");
-		myfileE.open ("acc<=512.txt");
-		myfileF.open ("SUvstemp<=512.txt");
-		myfileG.open ("mag^2vstemp<=512.txt");
-	} else if (nx>512) {
-		myfileA.open ("log>512.txt");
-		myfileB.open ("writeconf>512.txt");
-		myfileC.open ("mag>512.txt");
-		myfileD.open ("enr>512.txt");
-		myfileE.open ("acc>512.txt");
-		myfileF.open ("SUvstemp>512.txt");
-		myfileG.open ("mag^2vstemp>512.txt");
-	}
-
-	myfileA << "Number of sites in the lattice is " << nx << "\n\n";
-
-}
-
-//@----------------------------------------------------------------
-
-void setallzero() {
-
-	fill_n(stra, (ll + 1), 0);
-	fill_n(strb, (ll + 1), 0);
-	fill_n(pfrst, (nx + 1), 0);
-	fill_n(plast, (nx + 1), 0);
-	fill_n(spn1, (nx + 1), 0);
-	fill_n(tmp1, (ll + 1), 0);
-	fill_n(tmp2, (ll + 1), 0);
-	fill_n(lstr, (ll + 1), false);
-	fill_n(pos, (lls + 1), 0);
-	fill_n(opr, (lls + 1), 0);
-
-	for (int i=0; i<(lls+1); i++) {
-		for (int j=0; j<(nx+1); j++) {
-			pos1[i][j] = 0;
-			str1[i][j] = 0;
-			con1[i][j] = false;
-		}
-	}
-
 }
 
 //@----------------------------------------------------------------

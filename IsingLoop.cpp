@@ -14,13 +14,8 @@
 //@		2. Removed random number generator parts and using MTRand
 //@		3. openlog(), closelog() functions.
 //@   4. readconf() not used because doesn't seem like we'd want to?
-//@   5. removed quite a
+//@   5. removed quite a bit
 //@==================================================================//
-
-/*@ So obviously I'm using quite a bit of global variables. This is mostly because it's
-immediately easier, and seemed to be what you started to do (since this isn't some code
-for a big company, etc.). However, I can certainly switch to lessen the amount of 
-global variables should you suggest so. */  
 
 #include <iostream>
 #include <fstream>
@@ -38,7 +33,7 @@ using namespace std;
 
 //@----------------------------------------------------------------
 
-const int nx = 32;
+const int nx = 16;
 
 //@ size in x-direction (since 1d, it's only direction)
 
@@ -48,7 +43,7 @@ const int ll = 10000;
 
 const int lls = 500;
 
-//$ maximum length of subsequence?
+//$ maximum length of subsequence
 
 int l = 20;
 
@@ -72,7 +67,7 @@ double beta;
 
 // inverse temperature
 
-double eshft;
+long double eshft;
 
 /*$ sum of all constants added to the hamiltonian (see hamiltonian equations perhaps?) */
 
@@ -90,11 +85,11 @@ double ar1, ar2, ar3, ar4;
 
 //@----------------------------------------------------------------
 
-int isteps = 100000;
+int isteps = 5000;
 
 //@ equilibriation steps
 
-int msteps = 2000000;
+int msteps = 200000;
 
 //@ measurement steps 
 
@@ -104,13 +99,13 @@ int nd = 1;
 
 int nmsr;
 
+// number of measurements counted (for getting averages)
+
+long double su, xu, avnu, avni, avnt, avn1, avn2;
+
 //$
 
-double su, xu, avnu, avni, avnt, avn1, avn2;
-
-//$
-
-double av_magpow2;
+long double av_magpow2;
 
 //@ For av_magpow2
 
@@ -124,40 +119,32 @@ double av_magpow2;
 
 int spn[nx+1] = {0};
 
-//@ //~ spin array, flag n3
+//@ spin array
 
 int stra[ll+1] = {0};
 int strb[ll+1] = {0};
 
-/*$ (NOTE reason for names, see str1 below) operator string(s)? uses ll which is the max expansion truncation. go down p list decides which operator it is. i and j can be much farther apart, but there are still two things to specify hence the 1,2 part of the multidimensions first array gives i second array gives j put together to get Hij*/
+/*~ (NOTE reason for names, see str1 below) operator string(s)? uses ll which is the max expansion truncation. go down p list decides which operator it is. i and j can be much farther apart, but there are still two things to specify hence the 1,2 part of the multidimensions first array gives i second array gives j put together to get Hij. */
 
 int x1[nx+1] = {0}; //~ changed xyz1 to x1
-//~ int xyz2[n3] = {0};
-//~ int xyz3[n3] = {0};
 
-/*@ //~ corrdinates for given spin i, where x-coordinate is xyz1, y-coordinate is xyz2, z-coordinate is xyz3. note: Sandvik (I believe) makes a typo when he typed that y-coordinate is equal to the same array as x-coordinate. */
-
-//~ int xyzi[n3] = {0};
-
-/*~ this one gets hairy. Sandvik has it originally as xyzi(nx,ny,nz) which is a 3 dimensional array in fortran77 representing spin number given by coordinates x,y,z = xyzi(x,y,z). so although I am not exactly following him at this point, it's likely best to switch to a 1D chosen from here on out, hence why n3 still works at the moment. Anyway, flagged for modification. */
+/*~ corrdinates for given spin i*/
 
 int disx[nx+1][nx+1] = {0};
-//~ int disy[ny*ny] = {0};
-//~ int disz[nz*nz] = {0};
 
-/*~ this one also could get hairy. although this seems like the best route, just watch for the math. represents the periodic distances in x,y, and z directions between two points (remove later if easily translate into just 1d considerations). possibly still needs modifications as well since original is disx(nx,nx) and etc. */
+/*~ represents the periodic distances in x directions between two points*/
 
 int pfrst[nx+1] = {0};
 
-/*$ //~ first position to search in probability list given INT(R*n3), what is R (random number generator?) and is this similar to frstspinop array? */
+/*$ first position to search in probability list given INT(R*n3), what is R (random number generator?) and is this similar to frstspinop array? */
 
 int plast[nx+1] = {0};
 
-/*$ //~ last position to search in probability list given INT(R*n3), what is R (random number generator?) and is this similar to lastspinop array? */
+/*$ last position to search in probability list given INT(R*n3), what is R (random number generator?) and is this similar to lastspinop array? */
 
 bool lis[3][3][nx/2 + 1] = {0};
 
-/*$ //~ For allowed spin configuration given distance between sites. ok so original is basically the equivalent of a boolean 5 dimensional array it seems: LOGICAL lis(-1:1,-1:1,0:nx/2,0:ny/2,0:nz/2). I just split into 4 arrays. */
+/*$ //~ For allowed spin configuration given distance between sites original was LOGICAL lis(-1:1,-1:1,0:nx/2,0:ny/2,0:nz/2)*/
 
 double ris[nx/2 + 1] = {0};
 
@@ -181,11 +168,11 @@ int lsub[nx+1] = {0};
 
 int pos1[lls+1][nx+1] = {0};
 
-/*$ //~ positions?, watch the math */
+/*$ //~ positions?*/
 
 int str1[lls+1][nx+1] = {0};
 
-//$ //~ substring operators?, watch the math (NOTE above name stra and strb arrays)
+//$ //~ substring operators? (NOTE above name stra and strb arrays)
 
 bool con1[lls+1][nx+1] = {0};
 
@@ -237,21 +224,13 @@ void init(MTRand_open& rand_num);
 
 //@ initializes the system: initconf, lattice, pvectors, isingpart, zerodat
 
-//@ void openlog();
-
-/*$ looks like writes information to a (12) log.txt (note a 10?), note the closelog function so probably writing the equilibrium step thing to log.txt */
-
-//@ void closelog();
-
-//@ close the (12) log.txt
-
 void errcheck();
 
 /*$ looks like checks if certain spins weren't possible in the first place? uses str(1,i) and str(2,i) arrays */
 
 void writeconf(ofstream& myfile2);
 
-/*$ writes length of lattice in x,y,z directions (we'll just use x), beta, L (hamiltonian string length?), spn(i) spin array values, str(1,i) (bond array indicates site left for our case?), str(2,i) (bond array indicates site right for our case?) uses (10) (20)*/ 
+/*$ writes length of lattice in x, beta, L (hamiltonian string length?), spn(i) spin array values, str(1,i) (bond array indicates site left for our case?), str(2,i) (bond array indicates site right for our case?)*/ 
 
 void measure();
 
@@ -305,6 +284,14 @@ void offupdate(int s, MTRand_open& rand_num);
 
 //$
 
+void writeopen(ofstream& myfileA, ofstream& myfileB, ofstream& myfileC, ofstream& myfileD, ofstream& myfileE, ofstream& myfileF, ofstream& myfileG);
+
+//@ for writing things to file
+
+void setallzero();
+
+//@ for setting everything to 0
+
 //@----------------------------------------------------------------
 
 //@----------------------------------------------------------------
@@ -315,20 +302,15 @@ void offupdate(int s, MTRand_open& rand_num);
 
 int main() {
 
-	ofstream myfile1; //@ Initialize the write-data-to-file.
-	myfile1.open ("logN32.txt"); //@ Name and begin the write-data-to-file.
+	ofstream myfile1;
 	ofstream myfile2;
-	myfile2.open ("writeconfN32.txt");
 	ofstream myfile3;
-	myfile3.open ("magN32.txt");
 	ofstream myfile4;
-	myfile4.open ("enrN32.txt");
 	ofstream myfile5;
-	myfile5.open ("accN32.txt");
 	ofstream myfile6;
-	myfile6.open ("SUvstempN32.txt");
 	ofstream myfile7;
-	myfile7.open ("mag^2vstempN32.txt");
+
+	writeopen (myfile1, myfile2, myfile3, myfile4, myfile5, myfile6, myfile7);
 
 	unsigned long int time_seed = time(NULL);
 	MTRand_open rand_num(time_seed);
@@ -337,8 +319,6 @@ int main() {
 	
 	for (int y=0; y<num_temp_step; y++) {
 
-		cout << y << "\n\n";
-
   	temp = start_temp + y*temp_step;
 		
 		//@ start temp loop
@@ -346,15 +326,12 @@ int main() {
     beta = 1.0/temp;
 
     cout << "Now processing T = " << temp << ", beta = " << beta << "\n\n";
+    myfile1 << "Now processing T = " << temp << ", beta = " << beta << "\n\n";
 
    	myfile6 << temp << " ";
 		myfile7 << temp << " ";
 		
 		init(rand_num);
-
-		//@ consider Sandvik's (in == 0)
-
-		//@ cout << "I have made a configuration and have started first mcstep loop" << "\n\n";
 
 		for (int i=1; i<(isteps+1); i++) {
 
@@ -363,30 +340,18 @@ int main() {
 			checkl(i, myfile1, rand_num);
 
 			if ((i%(isteps/10))==0) { //@ to record every 10 steps
-	
-				//@ openlog();
 
 				myfile1 << "Done equilibriation step: " << i << "\n\n";	
-		
-				//@ closelog();
 
 				errcheck();
-
-				//cout << i << " " << stra[1] << " " << strb[1] << endl;
 
 			}
 
 		}
 
-		//@ cout << "I have finished the first mcstep loops, error checked, and etc." << "\n\n";
-
 		writeconf(myfile2);
 
-		//@ cout << "I have written down the configuration for that loop" << "\n\n";
-
 		for (int j=1; j<(nd+1); j++) {
-
-		//@ cout << "Loop test " << j << endl;
 
 			ar1 = 0.0;
 			ar2 = 0.0;
@@ -403,15 +368,9 @@ int main() {
 
 				}
 
-		//@ cout << "Main test b" << endl;
-
 				if ((k%(msteps/10))==0) { //@ to record every 10 steps
 
-					//@ openlog();
-
-					myfile1 << "Done measurement step: " << j << ", " << k << "\n\n";
-
-					//@ closelog();
+					myfile1 << "Done measurement step: " << k << "\n\n";
 
 					errcheck();
 
@@ -421,17 +380,28 @@ int main() {
 
 			results(myfile3, myfile4, myfile6, myfile7);
 
-			//@ cout << "Main res test" << endl;
-
 			writeacc(msteps, myfile5);
 
 			writeconf(myfile2);
 
 		}
-		
+
+	cout << "Completed temp step of temp = " << temp << ", beta = " << beta << "\n\n";
+	myfile1 << "Completed temp step of temp = " << temp << ", beta = " << beta << "\n\n";
+
+	l = 20;
+	mlls = 0;
+	ar1 = 0.0;
+	ar2 = 0.0;
+	ar3 = 0.0;
+	ar4 = 0.0;
+	//@ Added this in because perhaps it's relevant? l wouldn't restart between temp loops
+
+	setallzero();
+	//$
+
 	}
 
-	cout << "I have finished the second loop, wrote results, and etc." << "\n\n";
 	myfile1.close(); //@ Finish the write-data-to-file.
 	myfile2.close();
 	myfile3.close();
@@ -439,7 +409,7 @@ int main() {
 	myfile5.close();
 	myfile6.close();
 	myfile7.close();
-
+	cout << "Done.";
 	return 0;
 
 
@@ -455,7 +425,6 @@ int main() {
 
 void init(MTRand_open& rand_num) {
 
-	//@ omitted readconf function
 	initconf(rand_num);
 	lattice();
 	pvectors();
@@ -488,21 +457,14 @@ void initconf(MTRand_open& rand_num) {
 
 		// the result of this is to randomly select half of the spins and flip them to +1, seems like an overly complicated way to initialize the spins, but whatever
 
-/*$ NOTE: so this one may be tricky or I may be over thinking it. at first I just thought it was a simple goto continue basically, but he doesn't place to "goto 10"'s 10 at the end of the loop, he puts it at the first min(,) statement. which I believe means the code wants to repeat finding another random site that IS spn[c] = -1 and flip that to spn[c] 1 so that EXACTLY (if n3 is an even number, roughly half if n3 is odd) half of the spins are +1 (spin up) and half the spins are (-1) after randomly choosing spins and flipping or leaving the same +1 (spin up), until this is true. So I'm going to simply implement a forever loop that accomplishes that for now (apparently the internet hates goto statements) unless I think of something better. */
-
 		spn[c] = 1;
 	}
 	
-	//@ cout << "Initial spin configuration:\n\n";
-	//@ for (int j=1; j<(nx+1); j++) {
-		//@ cout << spn[j] << " ";
-	//@ }
-	//@ cout << "\n\n";
 }
 
 //@----------------------------------------------------------------
 
-void lattice() { //~ lots of omits due to original using 3 dimensions
+void lattice() {
 
 	// many of these data structures may no longer be necessary/useful in 1D code, but possibly useful to hold on to for higher dimensional generalization	
 	
@@ -529,7 +491,7 @@ void lattice() { //~ lots of omits due to original using 3 dimensions
 
 void pvectors() {
 
-	for (int i=0; i<l; i++ ) { //@ see above comment
+	for (int i=0; i<l; i++ ) {
 		ap1[i] = ht * beta * double(nx) / (double(l - i));
 	} 
 
@@ -546,7 +508,7 @@ void isingpart() {
 	int ix; //@note ix used for inside below loop as well
 	double r1, r2, p1, p2;
 
-	for (ix=0; ix<(nx/2 + 1); ix++) { /*$ //~ note because see lis..[max], test different values perhaps, it's because he introduces a 0 index when fortran arrays are usually 1 to number inclusive both ends, whereas c++ is 0 to number inclusive for 0 and exclusive for number */
+	for (ix=0; ix<(nx/2 + 1); ix++) { /*$ what do these exactly accomplish*/
 		if (ix==0) {
 			ris[ix] = ht;
 			lis[2][2][ix] = true;
@@ -556,7 +518,7 @@ void isingpart() {
 		} else {
 			r1 = double(ix);
 			r2 = double(nx - ix);
-			ris[ix] = (-1.0)/(r1*r1) - 1.0/(r2*r2);
+			ris[ix] = (-1.0)/(r1*r1) - 1.0/(r2*r2); //$~ TWEAK THIS FOR PROPER "DISTANCES OR THIS THING LOOK AT THOSE r^2's"
 			if (ris[ix]<=0) {
 				lis[2][2][ix] = true;
 				lis[2][0][ix] = false;
@@ -573,7 +535,7 @@ void isingpart() {
 	}
 
 	pint[0] = 0.0;
-	pint[1] = ris[0]; //$ //~ perhaps should switch with max ris value instead, but unsure
+	pint[1] = ris[0];
 	eshft = 0.0;
 	for (int i=2; i<(nx+1); i++) {
 		ix = disx[1][x1[i]]; /*@ to be clear, this is finding the distance between the first site (site x1[0]) and every other site (site x1[i]), note: 1 to nx*/
@@ -631,7 +593,7 @@ void diaupdate(MTRand_open& rand_num) {
 
 	int s1, s2, p0, p1, p2, ix, nac1, nac2, ntr2;
 	double p;
-		//cout << "Begin diagonal update" << "\n\n";
+
 	nac1 = 0;
 	nac2 = 0;
 	ntr2 = 0;
@@ -673,8 +635,6 @@ void diaupdate(MTRand_open& rand_num) {
 		s1 = stra[i]; //$ why did he redefine s1
 						
 		if (s1>0) { //@ doesn't this work on Hii as well if i>0
-					
-		//cout << "enter if statement" << endl;
 
 			while (true) {
 				ntr2 += 1;
@@ -692,7 +652,6 @@ void diaupdate(MTRand_open& rand_num) {
 					if ((lis[spn[s1]+1][spn[s2]+1][ix])) {
 						strb[i] = s2;
 						nac2 += 1;
-						//cout << "b1" << endl;
 						break;
 					} else {
 						continue;
@@ -708,7 +667,6 @@ void diaupdate(MTRand_open& rand_num) {
 					if ((lis[spn[s1]+1][spn[s2]+1][ix])) {
 						strb[i] = s2;
 						nac2 += 1;
-						//cout << "b2" << endl;
 						break;
 					} else {
 						continue;
@@ -722,7 +680,6 @@ void diaupdate(MTRand_open& rand_num) {
 						if ((lis[spn[s1]+1][spn[s2]+1][ix])) {
 							strb[i] = s2;
 							nac2 += 1;
-							//cout << "b3" << endl;
 							break;
 						} else {
 							continue;
@@ -740,7 +697,6 @@ void diaupdate(MTRand_open& rand_num) {
 			}
 		}
 	}
-			//cout << "End diagonal update" << "\n\n";
 	ar1 += double(nac1)/double(l);
 	if (ntr2!=0) {
 		ar2 += double(nac2)/double(ntr2);
@@ -751,7 +707,7 @@ void diaupdate(MTRand_open& rand_num) {
 //@----------------------------------------------------------------
 
 void partition() {
-		//cout << "I have this part of the mcstep and am on the partition function" << "\n\n";
+
 	int s1, s2;
 	
 	for (int i=1; i<(nx+1); i++) {
@@ -870,16 +826,12 @@ void offupdate(int s, MTRand_open& rand_num) {
 
 void checkl(int step, ofstream& myfile1, MTRand_open& rand_num) {
 
-	//myfile1 << "MF1 test \n\n";
-
 	int p, dl, l1;
 
 	dl = l/10 + 2;
 	if (nh<(l - dl/2)) {
 		return;
 	}
-
-//cout << "test b" << endl;
 
 	l1 = l + dl;
 	for (int i=1; i<(l1+1); i++) {
@@ -917,14 +869,8 @@ void checkl(int step, ofstream& myfile1, MTRand_open& rand_num) {
 	}
 	
 	pvectors();
-
-	//cout << "A screen test" << endl;
 	
 	myfile1 << step << " increased l to " << l << "\n\n";
-	//myfile1 << "MF2 test \n\n";
-
-	//cout << "MF2 screen test" << endl;
-
 
 }
 
@@ -942,7 +888,6 @@ void errcheck() {
 		s1 = stra[j];
 		s2 = strb[j];
 		if ((s1<-1)||(s1>nx)) {
-			//$ writes "illegal s1 operator" to somewhere seemingly not log.txt
  			cout << "Illegal s1 operator on an errcheck() j = " << j << " where s1 = " << s1 << "\n\n";
 			return;
 		}
@@ -955,7 +900,7 @@ void errcheck() {
 		if (s1>0) {
 			ix = disx[x1[s1]][x1[s2]];			
 			if ((!lis[spn1[s1]+1][spn1[s2]+1][ix])) {
-				cout << "Illegal Ising bond on an errcheck() j = " << j << " where Ising bond = " << lis[spn[s1]+1][spn[s2]+1][ix] << ", ix = " << ix << "\n\n";
+				cout << "Illegal Ising bond on an errcheck() j = " << j << " where Ising bond = " << lis[spn1[s1]+1][spn1[s2]+1][ix] << ", ix = " << ix << "\n\n";
 				return;
 			}
 		} else if (s1==-1) {
@@ -1001,7 +946,7 @@ void writeconf(ofstream& myfile2) {
 void measure() {
 
 	int s1, s2, mu, nu, ni, nt, nh1, ssum, last;
-	double su1, xu1, mag;
+	double su1, xu1, magpow2;
 
 	nu = 0;
 	ni = 0;
@@ -1013,9 +958,7 @@ void measure() {
 		mu += spn[i];
 	}
 
-	mag = double(mu);
-	mag = mag/double(nx);
-	mag = pow(mag, 2.0);
+	magpow2 = pow((double(mu)/double(nx)), 2.0);
 
 	//@ for av_magpow2
 
@@ -1060,7 +1003,7 @@ void measure() {
 	avn2 += double(pow(nh1,2));
 	nmsr += 1;
 
-	av_magpow2 += mag;
+	av_magpow2 += magpow2;
 	//@ for av_magpow2
 
 }
@@ -1068,10 +1011,6 @@ void measure() {
 //@----------------------------------------------------------------
 
 void results(ofstream& myfile3, ofstream& myfile4, ofstream& myfile6, ofstream& myfile7) {
-
-	//cout << "res test A" << endl;
-
-	//cout << "su test " << su << endl;
 
 	double c, e;
 
@@ -1135,6 +1074,97 @@ void writeacc(int msteps, ofstream& myfile5) {
 	myfile5 << "Spin flips / site         : " << ar4 << "\n"; 
 	myfile5 << "Max lsub                  : " << mlls << "\n\n";
  
+}
+
+//@----------------------------------------------------------------
+
+void writeopen(ofstream& myfileA, ofstream& myfileB, ofstream& myfileC, ofstream& myfileD, ofstream& myfileE, ofstream& myfileF, ofstream& myfileG) {
+
+	if (nx<=16) {
+		myfileA.open ("log<=16.txt");
+		myfileB.open ("writeconf<=16.txt");
+		myfileC.open ("mag<=16.txt");
+		myfileD.open ("enr<=16.txt");
+		myfileE.open ("acc<=16.txt");
+		myfileF.open ("SUvstemp<=16.txt");
+		myfileG.open ("mag^2vstemp<=16.txt");
+	} else if (nx<=32) {
+		myfileA.open ("log<=32.txt");
+		myfileB.open ("writeconf<=32.txt");
+		myfileC.open ("mag<=32.txt");
+		myfileD.open ("enr<=32.txt");
+		myfileE.open ("acc<=32.txt");
+		myfileF.open ("SUvstemp<=32.txt");
+		myfileG.open ("mag^2vstemp<=32.txt");
+	} else if (nx<=64) {
+		myfileA.open ("log<=64.txt");
+		myfileB.open ("writeconf<=64.txt");
+		myfileC.open ("mag<=64.txt");
+		myfileD.open ("enr<=64.txt");
+		myfileE.open ("acc<=64.txt");
+		myfileF.open ("SUvstemp<=64.txt");
+		myfileG.open ("mag^2vstemp<=64.txt");
+	} else if (nx<=128) {
+		myfileA.open ("log<=128.txt");
+		myfileB.open ("writeconf<=128.txt");
+		myfileC.open ("mag<=128.txt");
+		myfileD.open ("enr<=128.txt");
+		myfileE.open ("acc<=128.txt");
+		myfileF.open ("SUvstemp<=128.txt");
+		myfileG.open ("mag^2vstemp<=128.txt");
+	} else if (nx<=256) {
+		myfileA.open ("log<=256.txt");
+		myfileB.open ("writeconf<=256.txt");
+		myfileC.open ("mag<=256.txt");
+		myfileD.open ("enr<=256.txt");
+		myfileE.open ("acc<=256.txt");
+		myfileF.open ("SUvstemp<=256.txt");
+		myfileG.open ("mag^2vstemp<=256.txt");
+	} else if (nx<=512) {
+		myfileA.open ("log<=512.txt");
+		myfileB.open ("writeconf<=512.txt");
+		myfileC.open ("mag<=512.txt");
+		myfileD.open ("enr<=512.txt");
+		myfileE.open ("acc<=512.txt");
+		myfileF.open ("SUvstemp<=512.txt");
+		myfileG.open ("mag^2vstemp<=512.txt");
+	} else if (nx>512) {
+		myfileA.open ("log>512.txt");
+		myfileB.open ("writeconf>512.txt");
+		myfileC.open ("mag>512.txt");
+		myfileD.open ("enr>512.txt");
+		myfileE.open ("acc>512.txt");
+		myfileF.open ("SUvstemp>512.txt");
+		myfileG.open ("mag^2vstemp>512.txt");
+	}
+
+	myfileA << "Number of sites in the lattice is " << nx << "\n\n";
+
+}
+
+//@----------------------------------------------------------------
+
+void setallzero() {
+
+	fill_n(stra, (ll + 1), 0);
+	fill_n(strb, (ll + 1), 0);
+	fill_n(pfrst, (nx + 1), 0);
+	fill_n(plast, (nx + 1), 0);
+	fill_n(spn1, (nx + 1), 0);
+	fill_n(tmp1, (ll + 1), 0);
+	fill_n(tmp2, (ll + 1), 0);
+	fill_n(lstr, (ll + 1), false);
+	fill_n(pos, (lls + 1), 0);
+	fill_n(opr, (lls + 1), 0);
+
+	for (int i=0; i<(lls+1); i++) {
+		for (int j=0; j<(nx+1); j++) {
+			pos1[i][j] = 0;
+			str1[i][j] = 0;
+			con1[i][j] = false;
+		}
+	}
+
 }
 
 //@----------------------------------------------------------------

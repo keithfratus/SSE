@@ -63,11 +63,11 @@ const int num_temp_step = 500;
 const double final_temp = start_temp + temp_step*(num_temp_step - 1);
 
 
-const long int cool_ratio = 4;
+const long int cool_ratio = 10;
 
-const long int update_ratio = 5;
+const long int update_ratio = 10;
 
-const long int max_msteps = 8000000000;
+const long int max_msteps = 2000000000;
 
 const long int min_msteps = 20000;
 
@@ -80,7 +80,7 @@ const double max_error = 0.02;
 //@ For adaptive step.
 
 
-long int msteps = 100000;
+long int msteps = 200000;
 
 //@ measurement steps
 

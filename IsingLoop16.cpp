@@ -16,8 +16,8 @@
 //@   4. readconf() not used because doesn't seem like we'd want to?
 //@   5. removed quite a bit
 //@   6. reorganized, temp loop, reset to 0 start of each temp loop,
-//@      put rng to reset start of each temp loop, <M^2>, <M^4>, <E>,
-//@			 p=10, isteps, msteps, and EnVsisteps (calcenrcool) 
+//@      put rng to reset start of each temp loop, <M^2>, <M^4>,
+//@      
 //@==================================================================//
 
 #include <iostream>
@@ -38,15 +38,6 @@ using namespace std;
 
 
 
-const double power = 10.0;
-
-//@ power of ising interactions decay 
-
-const double avn1ctemp = 1.0;
-
-//@ for first "extra" idea
-
-
 const int nx = 16;
 
 //@ size in x-direction (since 1d, it's only direction)
@@ -59,7 +50,7 @@ const int lls = 500;
 
 //$ maximum length of subsequence
 
-const double ht = 0.01;
+const double ht = 0.5;
 
 // transverse field strength
 
@@ -72,11 +63,11 @@ const int num_temp_step = 500;
 const double final_temp = start_temp + temp_step*(num_temp_step - 1);
 
 
-long int msteps = 2000000;
+long int msteps = 200000;
 
 //@ measurement steps
 
-long int isteps = 100000;
+long int isteps = 2000;
 
 //@ equilibriation steps (before was 5000)
 
@@ -144,7 +135,6 @@ long double avn1;
 long double avn2;
 
 //$
-
 
 long double av_magpow2;
 
@@ -280,13 +270,9 @@ void results(ofstream& myfile3, ofstream& myfile4, ofstream& myfile6, ofstream& 
 
 /*@ writes calculated observables into (10) mag.dat for su and xu, (10) enr.dat for e, c, avni, avnt, and avnu */
 
-void writeacc(ofstream& myfile5);
+void writeacc(long int msteps, ofstream& myfile5);
 
 /*$ writes diagonal acceptance 1, diagonal acceptance 2, off-diagonal substitutions, spin flips / site, max lsub (max hamiltonian string length?) */
-
-void calcenrcool (int step, ofstream& myfile8);
-
-//@
 
 
 
@@ -340,35 +326,31 @@ int main() {
 
 	ofstream writelog; //@ Initialize the write-data-to-file.
 
-	writelog.open ("logN16_task_2.txt"); //@ Name and begin the write-data-to-file.
+	writelog.open ("logN16_3.txt"); //@ Name and begin the write-data-to-file.
 
 	ofstream writeconfig;
 
-	writeconfig.open ("writeconfN16_task_2.txt");
+	writeconfig.open ("writeconfN16_3.txt");
 
 	ofstream writemag;
 
-	writemag.open ("magN16_task_2.txt");
+	writemag.open ("magN16_3.txt");
 
 	ofstream writeenr;
 
-	writeenr.open ("enrN16_task_2.txt");
+	writeenr.open ("enrN16_3.txt");
 
 	ofstream writeac;
 
-	writeac.open ("accN16_task_2.txt");
+	writeac.open ("accN16_3.txt");
 
-	ofstream writeavn1_temp;
+	ofstream writesu;
 
-	writeavn1_temp.open ("avn1vstempN16_task_2.txt");
+	writesu.open ("SUvstempN16_3.txt");
 
 	ofstream writemag_2vstemp;
 
-	writemag_2vstemp.open ("mag^2vstempN16_task_2.txt");
-
-	ofstream writeavn1c_cool;
-
-	writeavn1c_cool.open ("avn1vscooldownstepN16temp1_task_2.txt");
+	writemag_2vstemp.open ("mag^2vstempN16_3.txt");
 	
 	for (int y=0; y<num_temp_step; y++) {
 
@@ -382,7 +364,7 @@ int main() {
 
     writelog << "Now processing T = " << temp << ", beta = " << beta << "\n\n";
 
-   	writeavn1_temp << temp << " ";
+   	writesu << temp << " ";
 
 		writemag_2vstemp << temp << " ";
 
@@ -455,12 +437,6 @@ int main() {
 
 			checkl(i, writelog, ran);
 
-			if (temp==avn1ctemp){
-
-				calcenrcool(i, writeavn1c_cool);
-
-			}
-			
 			if ((i%(isteps/10))==0) { //@ to record every 10 steps
 
 				writelog << "Done equilibriation step: " << i << "\n\n";	
@@ -498,9 +474,9 @@ int main() {
 
 		}
 
-		results(writemag, writeenr, writeavn1_temp, writemag_2vstemp);
+		results(writemag, writeenr, writesu, writemag_2vstemp);
 
-		writeacc(writeac);
+		writeacc(msteps, writeac);
 
 		writeconf(writeconfig);
 	
@@ -520,13 +496,11 @@ int main() {
 
 	writeac.close();
 
-	writeavn1_temp.close();
+	writesu.close();
 
 	writemag_2vstemp.close();
 
-	writeavn1c_cool.close();
-
-	cout << "Done.\n\n";
+	cout << "Done.";
 
 	return 0;
 
@@ -717,7 +691,7 @@ void isingpart() {
 
 			r2 = double(nx - ix);
 
-			ris[ix] = (-1.0)/pow(r1, power) - 1.0/pow(r2, power); //$~ TWEAK THIS FOR PROPER "DISTANCES OR THIS THING LOOK AT THOSE r^2's"
+			ris[ix] = (-1.0)/(r1*r1) - 1.0/(r2*r2); //$~ TWEAK THIS FOR PROPER "DISTANCES OR THIS THING LOOK AT THOSE r^2's"
 
 			if (ris[ix]<=0) {
 
@@ -1638,13 +1612,13 @@ void results(ofstream& myfile3, ofstream& myfile4, ofstream& myfile6, ofstream& 
 
 	if (temp == final_temp){
 
-		myfile6 << avn1;
+		myfile6 << su;
 
 		myfile7 << av_magpow2;
 
 	} else {
 
-		myfile6 << avn1 << "\n";
+		myfile6 << su << "\n";
 
 		myfile7 << av_magpow2 << "\n";
 
@@ -1678,7 +1652,6 @@ void zerodat() {
 
 	nmsr = 0;
 
-
 	av_magpow2 = 0.0;
 
 	av_magpow4 = 0.0;
@@ -1692,7 +1665,7 @@ void zerodat() {
 
 
 
-void writeacc(ofstream& myfile5) {
+void writeacc(long int msteps, ofstream& myfile5) {
 
 	ar1 = ar1/double(msteps);
 
@@ -1712,31 +1685,6 @@ void writeacc(ofstream& myfile5) {
 
 	myfile5 << "Max lsub                  : " << mlls << "\n\n";
  
-}
-
-
-
-//@----------------------------------------------------------------
-
-
-
-void calcenrcool(int step, ofstream& myfile8) {
-
-	int nh_c = 0;
-
-	for (int i=1; i<(l+1); i++) {
-
-		if (stra[i]!=0) {
-
-			nh_c = nh_c + 1;
-
-		}
-
-	}
-
-	myfile8 << step << " " << nh_c << "\n";
-
-
 }
 
 

@@ -17,7 +17,7 @@
 //@   5. removed quite a bit
 //@   6. reorganized, temp loop, reset to 0 start of each temp loop,
 //@      put rng to reset start of each temp loop, <M^2>, <M^4>, <E>,
-//@			 power, isteps, msteps, and EnVsisteps (calcenrcool) 
+//@			 p=10, isteps, msteps, and EnVsisteps (calcenrcool) 
 //@==================================================================//
 
 #include <iostream>
@@ -38,16 +38,16 @@ using namespace std;
 
 
 
-const double power = 2.0;
+const double power = 1.5;
 
 //@ power of ising interactions decay 
 
-const double avn1ctemp = 1.0;
+//const double avn1ctemp = 1.0;
 
 //@ for first "extra" idea
 
 
-const int nx = 16;
+const int nx = 512;
 
 //@ size in x-direction (since 1d, it's only direction)
 
@@ -59,7 +59,7 @@ const int lls = 500;
 
 //$ maximum length of subsequence
 
-const double ht = 0.01;
+const double ht = 0.5;
 
 // transverse field strength
 
@@ -72,7 +72,7 @@ const int num_temp_step = 500;
 const double final_temp = start_temp + temp_step*(num_temp_step - 1);
 
 
-long int msteps = 200000;
+long int msteps = 6400000;
 
 //@ measurement steps
 
@@ -276,7 +276,7 @@ void measure();
 
 /*$ measuring observables looks like. note: uses a common which seems like fortran77's version of a sort of pass by reference across different fortran .f files*/
 
-void results(ofstream& myfile3, ofstream& myfile4, ofstream& myfile6, ofstream& myfile7);
+void results(ofstream& myfile3, ofstream& myfile4, ofstream& myfile6, ofstream& myfile7, ofstream& myfile8, ofstream& myfile9);
 
 /*@ writes calculated observables into (10) mag.dat for su and xu, (10) enr.dat for e, c, avni, avnt, and avnu */
 
@@ -284,7 +284,7 @@ void writeacc(ofstream& myfile5);
 
 /*$ writes diagonal acceptance 1, diagonal acceptance 2, off-diagonal substitutions, spin flips / site, max lsub (max hamiltonian string length?) */
 
-void calcenrcool (int step, ofstream& myfile8);
+//void calcenrcool (int step, ofstream& myfile8);
 
 //@
 
@@ -340,35 +340,39 @@ int main() {
 
 	ofstream writelog; //@ Initialize the write-data-to-file.
 
-	writelog.open ("logN16_task_2.txt"); //@ Name and begin the write-data-to-file.
+	writelog.open ("logN512_task3_run3.txt"); //@ Name and begin the write-data-to-file.
 
 	ofstream writeconfig;
 
-	writeconfig.open ("writeconfN16_task_2.txt");
+	writeconfig.open ("writeconfN512_task3_run3.txt");
 
 	ofstream writemag;
 
-	writemag.open ("magN16_task_2.txt");
+	writemag.open ("magN512_task3_run3.txt");
 
 	ofstream writeenr;
 
-	writeenr.open ("enrN16_task_2.txt");
+	writeenr.open ("enrN512_task3_run3.txt");
 
 	ofstream writeac;
 
-	writeac.open ("accN16_task_2.txt");
+	writeac.open ("accN512_task3_run3.txt");
 
 	ofstream writeavn1_temp;
 
-	writeavn1_temp.open ("avn1vstempN16_task_2.txt");
+	writeavn1_temp.open ("avn1vstempN512_task3_run3.txt");
 
 	ofstream writemag_2vstemp;
 
-	writemag_2vstemp.open ("mag^2vstempN16_task_2.txt");
+	writemag_2vstemp.open ("mag^2vstempN512_task3_run3.txt");
 
-	ofstream writeavn1c_cool;
+	ofstream writeevstemp;
 
-	writeavn1c_cool.open ("avn1vscooldownstepN16temp1_task_2.txt");
+	writeevstemp.open ("EvsTempN512_task3_run3.txt");
+
+	ofstream writebindercumulantvstemp;
+
+	writebindercumulantvstemp.open ("bindercumulantvstempN512_task3_run3.txt");
 	
 	for (int y=0; y<num_temp_step; y++) {
 
@@ -385,6 +389,10 @@ int main() {
    	writeavn1_temp << temp << " ";
 
 		writemag_2vstemp << temp << " ";
+
+		writebindercumulantvstemp << temp << " ";
+
+		writeevstemp << temp << " ";
 
 		unsigned long int time_seed = time(NULL);
 
@@ -455,11 +463,11 @@ int main() {
 
 			checkl(i, writelog, ran);
 
-			if (temp==avn1ctemp){
+			//if (temp==avn1ctemp){
 
-				calcenrcool(i, writeavn1c_cool);
+				//calcenrcool(i, writeavn1c_cool);
 
-			}
+			//}
 			
 			if ((i%(isteps/10))==0) { //@ to record every 10 steps
 
@@ -498,7 +506,7 @@ int main() {
 
 		}
 
-		results(writemag, writeenr, writeavn1_temp, writemag_2vstemp);
+		results(writemag, writeenr, writeavn1_temp, writemag_2vstemp, writeevstemp, writebindercumulantvstemp);
 
 		writeacc(writeac);
 
@@ -524,7 +532,9 @@ int main() {
 
 	writemag_2vstemp.close();
 
-	writeavn1c_cool.close();
+	writeevstemp.close();
+
+	writebindercumulantvstemp.close();
 
 	cout << "Done.\n\n";
 
@@ -672,15 +682,13 @@ void pvectors() {
 
 	for (int i=0; i<l; i++ ) {
 
-		ap1[i] = ht * beta * double(nx) / (double(l - i)); /*@ Note: the (beta*2*(nearest_neighbors_summation)Jijabsolute_value_strength where i=/=j part is not directly on here */
-
-		/*@ This seems to map out pretty much all possible acceptance probabilities using current l which will obviously be revisited when l is increased for further use OF COURSE */
+		ap1[i] = ht * beta * double(nx) / (double(l - i));
 
 	} 
 
 	for (int j=1; j<(l+1); j++) {
 
-		dp1[j] = double(l - j + 1) / (ht * beta * double(nx)); //@ Note: the "missing parts" from equation (10b)
+		dp1[j] = double(l - j + 1) / (ht * beta * double(nx));
 
 	}
 
@@ -699,7 +707,7 @@ void isingpart() {
 	
 	double r1, r2, p1, p2;
 
-	for (ix=0; ix<(nx/2 + 1); ix++) {
+	for (ix=0; ix<(nx/2 + 1); ix++) { /*$ what do these exactly accomplish*/
 
 		if (ix==0) {
 
@@ -713,15 +721,13 @@ void isingpart() {
 
 			lis[0][0][ix] = true;
 
-		/*@ interaction strength and allowed spin configuration for all Hi,i = ht (and H(-1)0 = ht(ladder_up + ladder_down)?) operators */
-
 		} else {
 
 			r1 = double(ix);
 
 			r2 = double(nx - ix);
 
-			ris[ix] = (-1.0)/pow(r1, power) - 1.0/pow(r2, power); //@ part of Jij strength
+			ris[ix] = (-1.0)/pow(r1, power) - 1.0/pow(r2, power); //$~ TWEAK THIS FOR PROPER "DISTANCES OR THIS THING LOOK AT THOSE r^2's"
 
 			if (ris[ix]<=0) {
 
@@ -732,8 +738,6 @@ void isingpart() {
 				lis[0][2][ix] = false;
 
 				lis[0][0][ix] = true;
-
-				/*@ part of interaction strength and all allowed spin configurations for all Jij, below is illegal and shouldn't be able to happen with current initial conditions (ferromagnet wants to have aligned spins) I believe there is something with the propagation of states if it encounters an antialigned spins that it operates on then the whole thing will be "zero'd" out if this has something similar to SSE on the Heisenberg model*/
 
 			} else {
 
@@ -748,8 +752,6 @@ void isingpart() {
 			}
 
 			ris[ix] = abs(ris[ix]);
-
-			/*@  */
 
 		}
 
@@ -862,7 +864,9 @@ void diaupdate(MTRand_open& rand_num) {
 			[i,j]  = Ising operator */
 
 	int s1, s2, p0, p1, p2, ix, nac1, nac2, ntr2;
+
 	double p;
+
 	bool failed_all_ifs = false;
 
 	nac1 = 0;
@@ -1603,7 +1607,7 @@ void measure() {
 
 
 
-void results(ofstream& myfile3, ofstream& myfile4, ofstream& myfile6, ofstream& myfile7) {
+void results(ofstream& myfile3, ofstream& myfile4, ofstream& myfile6, ofstream& myfile7, ofstream& myfile8, ofstream& myfile9) {
 	//~ ************ CHANGING
 
 
@@ -1639,6 +1643,9 @@ void results(ofstream& myfile3, ofstream& myfile4, ofstream& myfile6, ofstream& 
 
 	//@ <M^2> and <M^4>
 
+	long double Binder_cumulant = ((long double) 1) - ( ((long double)av_magpow4) / (((long double) 3) * ((long double)(pow(av_magpow2, 2)) )) );
+
+	//@ Binder_cumulant
 
 	myfile3 << su << " " << xu << "\n";
 
@@ -1650,11 +1657,19 @@ void results(ofstream& myfile3, ofstream& myfile4, ofstream& myfile6, ofstream& 
 
 		myfile7 << av_magpow2;
 
+		myfile8 << e;
+
+		myfile9 << Binder_cumulant;
+
 	} else {
 
 		myfile6 << avn1 << "\n";
 
 		myfile7 << av_magpow2 << "\n";
+
+		myfile8 << e << "\n";
+
+		myfile9 << Binder_cumulant << "\n";
 
 	}
 
@@ -1728,24 +1743,24 @@ void writeacc(ofstream& myfile5) {
 
 
 
-void calcenrcool(int step, ofstream& myfile8) {
+//void calcenrcool(int step, ofstream& myfile8) {
 
-	int nh_c = 0;
+	//int nh_c = 0;
 
-	for (int i=1; i<(l+1); i++) {
+	//for (int i=1; i<(l+1); i++) {
 
-		if (stra[i]!=0) {
+		//if (stra[i]!=0) {
 
-			nh_c = nh_c + 1;
+			//nh_c = nh_c + 1;
 
-		}
+		//}
 
-	}
+	//}
 
-	myfile8 << step << " " << nh_c << "\n";
+	//myfile8 << step << " " << nh_c << "\n";
 
 
-}
+//}
 
 
 

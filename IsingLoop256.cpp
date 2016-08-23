@@ -67,7 +67,7 @@ long int msteps = 3200000;
 
 //@ measurement steps
 
-long int isteps = 2500;
+long int isteps = 2000;
 
 //@ equilibriation steps (before was 5000)
 

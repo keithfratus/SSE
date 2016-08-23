@@ -17,7 +17,7 @@
 //@   5. removed quite a bit
 //@   6. reorganized, temp loop, reset to 0 start of each temp loop,
 //@      put rng to reset start of each temp loop, <M^2>, <M^4>, <E>,
-//@			 p=10, isteps, msteps, and EnVsisteps (calcenrcool) 
+//@			 power, isteps, msteps, and EnVsisteps (calcenrcool) 
 //@==================================================================//
 
 #include <iostream>
@@ -38,7 +38,7 @@ using namespace std;
 
 
 
-const double power = 10.0;
+const double power = 2.0;
 
 //@ power of ising interactions decay 
 
@@ -72,13 +72,13 @@ const int num_temp_step = 500;
 const double final_temp = start_temp + temp_step*(num_temp_step - 1);
 
 
-long int msteps = 2000000;
+long int msteps = 200000;
 
 //@ measurement steps
 
-long int isteps = 100000;
+long int isteps = 2000;
 
-//@ equilibriation steps (before was 5000)
+//@ equilibriation steps
 
 
 int l;
@@ -672,13 +672,15 @@ void pvectors() {
 
 	for (int i=0; i<l; i++ ) {
 
-		ap1[i] = ht * beta * double(nx) / (double(l - i));
+		ap1[i] = ht * beta * double(nx) / (double(l - i)); /*@ Note: the (beta*2*(nearest_neighbors_summation)Jijabsolute_value_strength where i=/=j part is not directly on here */
+
+		/*@ This seems to map out pretty much all possible acceptance probabilities using current l which will obviously be revisited when l is increased for further use OF COURSE */
 
 	} 
 
 	for (int j=1; j<(l+1); j++) {
 
-		dp1[j] = double(l - j + 1) / (ht * beta * double(nx));
+		dp1[j] = double(l - j + 1) / (ht * beta * double(nx)); //@ Note: the "missing parts" from equation (10b)
 
 	}
 
@@ -697,7 +699,7 @@ void isingpart() {
 	
 	double r1, r2, p1, p2;
 
-	for (ix=0; ix<(nx/2 + 1); ix++) { /*$ what do these exactly accomplish*/
+	for (ix=0; ix<(nx/2 + 1); ix++) {
 
 		if (ix==0) {
 
@@ -711,13 +713,15 @@ void isingpart() {
 
 			lis[0][0][ix] = true;
 
+		/*@ interaction strength and allowed spin configuration for all Hi,i = ht (and H(-1)0 = ht(ladder_up + ladder_down)?) operators */
+
 		} else {
 
 			r1 = double(ix);
 
 			r2 = double(nx - ix);
 
-			ris[ix] = (-1.0)/pow(r1, power) - 1.0/pow(r2, power); //$~ TWEAK THIS FOR PROPER "DISTANCES OR THIS THING LOOK AT THOSE r^2's"
+			ris[ix] = (-1.0)/pow(r1, power) - 1.0/pow(r2, power); //@ part of Jij strength
 
 			if (ris[ix]<=0) {
 
@@ -728,6 +732,8 @@ void isingpart() {
 				lis[0][2][ix] = false;
 
 				lis[0][0][ix] = true;
+
+				/*@ part of interaction strength and all allowed spin configurations for all Jij, below is illegal and shouldn't be able to happen with current initial conditions (ferromagnet wants to have aligned spins) I believe there is something with the propagation of states if it encounters an antialigned spins that it operates on then the whole thing will be "zero'd" out if this has something similar to SSE on the Heisenberg model*/
 
 			} else {
 
@@ -742,6 +748,8 @@ void isingpart() {
 			}
 
 			ris[ix] = abs(ris[ix]);
+
+			/*@  */
 
 		}
 

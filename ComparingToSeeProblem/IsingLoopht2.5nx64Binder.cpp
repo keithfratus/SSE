@@ -10,17 +10,14 @@
 //@==================================================================//
 //@ Modification notes:
 //@		1. Started changing n3's to nx's, xyz1 and xyzi to x1, and 
-//@			 	omitting ny, nz, xyz2, xyz3, disy, disz
+//@			omitting ny, nz, xyz2, xyz3, disy, disz
 //@		2. Removed random number generator parts and using MTRand.
 //@		3. openlog(), closelog() functions.
 //@   4. readconf() not used because doesn't seem like we'd want to?
 //@   5. removed quite a bit
 //@   6. reorganized, temp loop, reset to 0 start of each temp loop,
-//@      	put rng to reset start of each temp loop, <M^2>, <M^4>, <E>,
-//@			 	power, isteps, msteps, and EnVsisteps (calcenrcool)
-//@		7. reordered variables, added writeopen and 
-//@			 	zero_between_temps functions, commented out 
-//@			 	calcenrcool and writeconf functions
+//@      put rng to reset start of each temp loop, <M^2>, <M^4>, <E>,
+//@			 p=10, isteps, msteps, and EnVsisteps (calcenrcool) 
 //@==================================================================//
 
 #include <iostream>
@@ -28,6 +25,7 @@
 #include <cmath>
 #include <iomanip>
 #include <algorithm>
+#include <string>
 
 #include "MT/mtrand.h"
 
@@ -41,31 +39,35 @@ using namespace std;
 
 
 
-const int nx = 512; //@ SEE ll VALUE BELOW
+const double ht = 2.5;
+
+// transverse field strength
+
+const double start_temp = 0.5;
+
+const int num_temp_step = 500;
+
+const int nx = 64;
 
 //@ size in x-direction (since 1d, it's only direction)
+
+const long int msteps = nx*12500;
+
+//@ measurement steps
+
+
 
 const double power = 1.5;
 
 //@ power of ising interactions decay 
 
-const double ht = 2.0; //@ SEE ll VALUE BELOW
-
-// transverse field strength
-
-const double start_temp = 2.17;
-
-const int num_temp_step = 166;
-
-const int ll = 10000; //@NOTE INCREASE IF SYSTEM SIZE IS 512 AND HT IS ~2.5+
-
-//@ max value for expansion truncation L (hamiltonian string cut off max)
-
 //@const double avn1ctemp = 1.0;
 
 //@ for first "extra" idea
 
+const int ll = 10000;
 
+//@ max value for expansion truncation L (hamiltonian string cut off max)
 
 const int lls = 500;
 
@@ -78,10 +80,6 @@ const double final_temp = start_temp + temp_step*(num_temp_step - 1);
 const long int isteps = 2000;
 
 //@ equilibriation steps
-
-const long int msteps = nx*12500;
-
-//@ measurement steps
 
 int l;
 
@@ -634,15 +632,13 @@ void pvectors() {
 
 	for (int i=0; i<l; i++ ) {
 
-		ap1[i] = ht * beta * double(nx) / (double(l - i)); /*@ Note: the (beta*2*(nearest_neighbors_summation)Jijabsolute_value_strength where i=/=j part is not directly on here */
-
-		/*@ This seems to map out pretty much all possible acceptance probabilities using current l which will obviously be revisited when l is increased for further use OF COURSE */
+		ap1[i] = ht * beta * double(nx) / (double(l - i));
 
 	} 
 
 	for (int j=1; j<(l+1); j++) {
 
-		dp1[j] = double(l - j + 1) / (ht * beta * double(nx)); //@ Note: the "missing parts" from equation (10b)
+		dp1[j] = double(l - j + 1) / (ht * beta * double(nx));
 
 	}
 
@@ -661,7 +657,7 @@ void isingpart() {
 	
 	double r1, r2, p1, p2;
 
-	for (ix=0; ix<(nx/2 + 1); ix++) {
+	for (ix=0; ix<(nx/2 + 1); ix++) { /*$ what do these exactly accomplish*/
 
 		if (ix==0) {
 
@@ -675,15 +671,13 @@ void isingpart() {
 
 			lis[0][0][ix] = true;
 
-		/*@ interaction strength and allowed spin configuration for all Hi,i = ht (and H(-1)0 = ht(ladder_up + ladder_down)?) operators */
-
 		} else {
 
 			r1 = double(ix);
 
 			r2 = double(nx - ix);
 
-			ris[ix] = (-1.0)/pow(r1, power) - 1.0/pow(r2, power); //@ part of Jij strength
+			ris[ix] = (-1.0)/pow(r1, power) - 1.0/pow(r2, power); //$~ TWEAK THIS FOR PROPER "DISTANCES OR THIS THING LOOK AT THOSE r^2's"
 
 			if (ris[ix]<=0) {
 
@@ -694,8 +688,6 @@ void isingpart() {
 				lis[0][2][ix] = false;
 
 				lis[0][0][ix] = true;
-
-				/*@ part of interaction strength and all allowed spin configurations for all Jij, below is illegal and shouldn't be able to happen with current initial conditions (ferromagnet wants to have aligned spins) I believe there is something with the propagation of states if it encounters an antialigned spins that it operates on then the whole thing will be "zero'd" out if this has something similar to SSE on the Heisenberg model*/
 
 			} else {
 
@@ -710,8 +702,6 @@ void isingpart() {
 			}
 
 			ris[ix] = abs(ris[ix]);
-
-			/*@  */
 
 		}
 
@@ -824,7 +814,9 @@ void diaupdate(MTRand_open& rand_num) {
 			[i,j]  = Ising operator */
 
 	int s1, s2, p0, p1, p2, ix, nac1, nac2, ntr2;
+
 	double p;
+
 	bool failed_all_ifs = false;
 
 	nac1 = 0;
@@ -918,9 +910,9 @@ void diaupdate(MTRand_open& rand_num) {
 
 				} else {
 
-					failed_all_ifs = false;
+				failed_all_ifs = false;
 
-					//@ for last branch with an if, else statement
+				//@ for last branch with an if, else statement
 
 				}
 
@@ -1567,7 +1559,7 @@ void measure() {
 
 
 
-void results(ofstream& myfile3, ofstream& myfile4, ofstream& myfile6, ofstream& myfile7) {
+void results(ofstream& myfile3, ofstream& myfile4, ofstream& myfile6, ofstream& myfile7, ofstream& myfile8, ofstream& myfile9) {
 	//~ ************ CHANGING
 
 
@@ -1603,6 +1595,9 @@ void results(ofstream& myfile3, ofstream& myfile4, ofstream& myfile6, ofstream& 
 
 	//@ <M^2> and <M^4>
 
+	long double Binder_cumulant = ((long double) 1) - ( ((long double)av_magpow4) / (((long double) 3) * ((long double)(pow(av_magpow2, 2)) )) );
+
+	//@ Binder_cumulant
 
 	myfile3 << su << " " << xu << "\n";
 
@@ -1614,11 +1609,19 @@ void results(ofstream& myfile3, ofstream& myfile4, ofstream& myfile6, ofstream& 
 
 		myfile7 << av_magpow2;
 
+		myfile8 << e;
+
+		myfile9 << Binder_cumulant;
+
 	} else {
 
 		myfile6 << avn1 << "\n";
 
 		myfile7 << av_magpow2 << "\n";
+
+		myfile8 << e << "\n";
+
+		myfile9 << Binder_cumulant << "\n";
 
 	}
 
@@ -1753,19 +1756,7 @@ void writeopen(ofstream& myfile1, ofstream& myfile3, ofstream& myfile4, ofstream
 
 	}
 
-	if (ht==0.5) {
-
-		htstring = "0.5";
-
-	} else if (ht==1.0) {
-
-		htstring = "1.0";
-
-	} else if (ht==1.5) {
-
-		htstring = "1.5";
-
-	} else if (ht==2.0) {
+	if (ht==2.0) {
 
 		htstring = "2.0";
 

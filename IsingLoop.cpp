@@ -10,14 +10,17 @@
 //@==================================================================//
 //@ Modification notes:
 //@		1. Started changing n3's to nx's, xyz1 and xyzi to x1, and 
-//@			omitting ny, nz, xyz2, xyz3, disy, disz
+//@			 	omitting ny, nz, xyz2, xyz3, disy, disz
 //@		2. Removed random number generator parts and using MTRand.
 //@		3. openlog(), closelog() functions.
 //@   4. readconf() not used because doesn't seem like we'd want to?
 //@   5. removed quite a bit
 //@   6. reorganized, temp loop, reset to 0 start of each temp loop,
-//@      put rng to reset start of each temp loop, <M^2>, <M^4>, <E>,
-//@			 power, isteps, msteps, and EnVsisteps (calcenrcool) 
+//@      	put rng to reset start of each temp loop, <M^2>, <M^4>, <E>,
+//@			 	power, isteps, msteps, and EnVsisteps (calcenrcool)
+//@		7. reordered variables, added writeopen and 
+//@			 	zero_between_temps functions, commented out 
+//@			 	calcenrcool and writeconf functions
 //@==================================================================//
 
 #include <iostream>
@@ -38,48 +41,47 @@ using namespace std;
 
 
 
-const double power = 2.0;
+const int nx = 512; //@ SEE ll VALUE BELOW
+
+//@ size in x-direction (since 1d, it's only direction)
+
+const double power = 1.5;
 
 //@ power of ising interactions decay 
 
-const double avn1ctemp = 1.0;
+const double ht = 2.0; //@ SEE ll VALUE BELOW
+
+// transverse field strength
+
+const double start_temp = 2.17;
+
+const int num_temp_step = 166;
+
+const int ll = 10000; //@NOTE INCREASE IF SYSTEM SIZE IS 512 AND HT IS ~2.5+
+
+//@ max value for expansion truncation L (hamiltonian string cut off max)
+
+//@const double avn1ctemp = 1.0;
 
 //@ for first "extra" idea
 
 
-const int nx = 16;
-
-//@ size in x-direction (since 1d, it's only direction)
-
-const int ll = 10000;
-
-//@ max value for expansion truncation L (hamiltonian string cut off max)
 
 const int lls = 500;
 
 //$ maximum length of subsequence
 
-const double ht = 0.01;
-
-// transverse field strength
-
-const double start_temp = 0.5;
-
 const double temp_step = 0.01;
-
-const int num_temp_step = 500;
 
 const double final_temp = start_temp + temp_step*(num_temp_step - 1);
 
-
-long int msteps = 200000;
-
-//@ measurement steps
-
-long int isteps = 2000;
+const long int isteps = 2000;
 
 //@ equilibriation steps
 
+const long int msteps = nx*12500;
+
+//@ measurement steps
 
 int l;
 
@@ -268,7 +270,7 @@ void checkl(long int step, ofstream& myfile1, MTRand_open& rand_num);
 
 void errcheck();
 
-void writeconf(ofstream& myfile2);
+//@ void writeconf(ofstream& myfile2);
 
 /*$ writes length of lattice in x, beta, L (hamiltonian string length?), spn(i) spin array values, str(1,i) (bond array indicates site left for our case?), str(2,i) (bond array indicates site right for our case?)*/ 
 
@@ -276,7 +278,7 @@ void measure();
 
 /*$ measuring observables looks like. note: uses a common which seems like fortran77's version of a sort of pass by reference across different fortran .f files*/
 
-void results(ofstream& myfile3, ofstream& myfile4, ofstream& myfile6, ofstream& myfile7);
+void results(ofstream& myfile3, ofstream& myfile4, ofstream& myfile6, ofstream& myfile7, ofstream& myfile8, ofstream& myfile9);
 
 /*@ writes calculated observables into (10) mag.dat for su and xu, (10) enr.dat for e, c, avni, avnt, and avnu */
 
@@ -284,7 +286,7 @@ void writeacc(ofstream& myfile5);
 
 /*$ writes diagonal acceptance 1, diagonal acceptance 2, off-diagonal substitutions, spin flips / site, max lsub (max hamiltonian string length?) */
 
-void calcenrcool (int step, ofstream& myfile8);
+//void calcenrcool (int step, ofstream& myfile8);
 
 //@
 
@@ -329,6 +331,16 @@ void offupdate(int s, MTRand_open& rand_num);
 //$
 
 
+void writeopen(ofstream& myfile1, ofstream& myfile3, ofstream& myfile4, ofstream& myfile5, ofstream& myfile6, ofstream& myfile7, ofstream& myfile8, ofstream& myfile9);
+
+//NOTE: REMOVED MYFILE2
+
+void zero_between_temps();
+
+/*@ Important: setting variables that need to be 0 (or 0.0 if a double) to that between temperatures!!
+		setting arrays that need to be 0 (or 0.0 if a double) to that between temperatures!!*/
+
+
 
 //@----------------------------------------------------------------
 //@ Main function
@@ -338,37 +350,28 @@ void offupdate(int s, MTRand_open& rand_num);
 
 int main() {
 
-	ofstream writelog; //@ Initialize the write-data-to-file.
+	ofstream writelog;
 
-	writelog.open ("logN16_task_2.txt"); //@ Name and begin the write-data-to-file.
-
-	ofstream writeconfig;
-
-	writeconfig.open ("writeconfN16_task_2.txt");
+	//@ ofstream writeconfig;
 
 	ofstream writemag;
 
-	writemag.open ("magN16_task_2.txt");
-
 	ofstream writeenr;
-
-	writeenr.open ("enrN16_task_2.txt");
 
 	ofstream writeac;
 
-	writeac.open ("accN16_task_2.txt");
-
 	ofstream writeavn1_temp;
-
-	writeavn1_temp.open ("avn1vstempN16_task_2.txt");
 
 	ofstream writemag_2vstemp;
 
-	writemag_2vstemp.open ("mag^2vstempN16_task_2.txt");
+	ofstream writeevstemp;
 
-	ofstream writeavn1c_cool;
+	ofstream writebindercumulantvstemp;
 
-	writeavn1c_cool.open ("avn1vscooldownstepN16temp1_task_2.txt");
+	writeopen(writelog, writemag, writeenr, writeac, writeavn1_temp, writemag_2vstemp, writeevstemp, writebindercumulantvstemp);
+
+	//@ Initialize the write-data-to-file.
+	//@ Name and begin the write-data-to-file.
 	
 	for (int y=0; y<num_temp_step; y++) {
 
@@ -386,66 +389,20 @@ int main() {
 
 		writemag_2vstemp << temp << " ";
 
+		writebindercumulantvstemp << temp << " ";
+
+		writeevstemp << temp << " ";
+
 		unsigned long int time_seed = time(NULL);
 
 		MTRand_open ran(time_seed);
 
 		//@ random number generator (0,1). Note: omitted RAN(), INITRANDOM, and WRITERAND(rndf)
 
-		mlls = 0;
+		zero_between_temps();
 
-		ar1 = 0.0;
-
-		ar2 = 0.0;
-
-		ar3 = 0.0;
-
- 		ar4 = 0.0;
-
-		/*@ Important: setting variables that need to be 0 (or 0.0 if a double) to that between temperatures!!*/
-
-		for (int c=0; c<(ll+1); c++) {
-
-			ap1[c] = 0.0;
-
-			dp1[c] = 0.0;
-
-			tmp1[c] = 0;
-
-			tmp2[c] = 0;
-
-			lstr[c] = 0;
-
-		}
-
-		for (int d=0; d<(nx+1); d++) {
-
-			pfrst[d] = 0;
-
-			plast[d] = 0;
-
-			lsub[d] = 0;
-
-			spn1[d] = 0;
-
-			for (int f=0; f<(lls+1); f++) {
-
-				pos1[f][d] = 0;
-
-				str1[f][d] = 0;
-
-				con1[f][d] = 0;
-
-				pos[f] = 0;
-
-				opr[f] = 0;
-
-			}
-
-		}
-
-		/*@ Important: setting arrays that need to be 0 (or 0.0 if a double) to that between temperatures!!*/
-		//@****************** check all variables first use
+		/*@ Important: setting variables that need to be 0 (or 0.0 if a double) to that between temperatures!!
+		setting arrays that need to be 0 (or 0.0 if a double) to that between temperatures!!*/
 
 		init(ran);
 
@@ -455,11 +412,11 @@ int main() {
 
 			checkl(i, writelog, ran);
 
-			if (temp==avn1ctemp){
+			//@ if (temp==avn1ctemp){
 
-				calcenrcool(i, writeavn1c_cool);
+				//@ calcenrcool(i, writeavn1c_cool);
 
-			}
+			//@ }
 			
 			if ((i%(isteps/10))==0) { //@ to record every 10 steps
 
@@ -471,11 +428,14 @@ int main() {
 
 		}
 
-		writeconf(writeconfig);
+		//@ writeconf(writeconfig);
 
 		ar1 = 0.0;
+		
 		ar2 = 0.0;
+
 		ar3 = 0.0;
+
 		ar4 = 0.0;
 
 		for (long int k=1; k<(msteps+1); k++) {
@@ -498,11 +458,11 @@ int main() {
 
 		}
 
-		results(writemag, writeenr, writeavn1_temp, writemag_2vstemp);
+		results(writemag, writeenr, writeavn1_temp, writemag_2vstemp, writeevstemp, writebindercumulantvstemp);
 
 		writeacc(writeac);
 
-		writeconf(writeconfig);
+		//@ writeconf(writeconfig);
 	
 		cout << "Completed temp step of temp = " << temp << ", beta = " << beta << "\n\n";
 
@@ -512,7 +472,7 @@ int main() {
 
 	writelog.close();
 
-	writeconfig.close();
+	//@ writeconfig.close();
 
 	writemag.close();
 
@@ -524,7 +484,9 @@ int main() {
 
 	writemag_2vstemp.close();
 
-	writeavn1c_cool.close();
+	writeevstemp.close();
+
+	writebindercumulantvstemp.close();
 
 	cout << "Done.\n\n";
 
@@ -956,9 +918,9 @@ void diaupdate(MTRand_open& rand_num) {
 
 				} else {
 
-				failed_all_ifs = false;
+					failed_all_ifs = false;
 
-				//@ for last branch with an if, else statement
+					//@ for last branch with an if, else statement
 
 				}
 
@@ -1449,6 +1411,7 @@ void errcheck() {
 
 
 
+/*
 void writeconf(ofstream& myfile2) {
 	
 	myfile2 << "Lx   = " << nx << "\n\n";
@@ -1478,6 +1441,7 @@ void writeconf(ofstream& myfile2) {
 	myfile2 << "\n" << "----------------" << "\n\n";
 
 }
+*/
 
 
 
@@ -1728,21 +1692,229 @@ void writeacc(ofstream& myfile5) {
 
 
 
-void calcenrcool(int step, ofstream& myfile8) {
+//void calcenrcool(int step, ofstream& myfile8) {
 
-	int nh_c = 0;
+	//int nh_c = 0;
 
-	for (int i=1; i<(l+1); i++) {
+	//for (int i=1; i<(l+1); i++) {
 
-		if (stra[i]!=0) {
+		//if (stra[i]!=0) {
 
-			nh_c = nh_c + 1;
+			//nh_c = nh_c + 1;
+
+		//}
+
+	//}
+
+	//myfile8 << step << " " << nh_c << "\n";
+
+
+//}
+
+
+
+//@----------------------------------------------------------------
+
+
+
+void writeopen(ofstream& myfile1, ofstream& myfile3, ofstream& myfile4, ofstream& myfile5, ofstream& myfile6, ofstream& myfile7, ofstream& myfile8, ofstream& myfile9) {
+
+	string nxstring;
+
+	string htstring;
+
+	string starttempstring;
+
+	string finaltempstring;
+
+	if (nx==512) {
+
+		nxstring = "512";
+
+	} else if (nx==256) {
+
+		nxstring = "256";
+
+	} else if (nx==128) {
+
+		nxstring = "128";
+
+	} else if (nx==64) {
+
+		nxstring = "64";
+
+	} else if (nx==32) {
+
+		nxstring = "32";
+
+	} else if (nx==16) {
+
+		nxstring = "16";
+
+	}
+
+	if (ht==0.5) {
+
+		htstring = "0.5";
+
+	} else if (ht==1.0) {
+
+		htstring = "1.0";
+
+	} else if (ht==1.5) {
+
+		htstring = "1.5";
+
+	} else if (ht==2.0) {
+
+		htstring = "2.0";
+
+	} else if (ht==2.5) {
+
+		htstring = "2.5";
+
+	} else if (ht==3.0) {
+
+		htstring = "3.0";
+
+	} else if (ht==3.5) {
+
+		htstring = "3.5";
+
+	} else if (ht==4.0) {
+
+		htstring = "4.0";
+
+	} else if (ht==4.5) {
+
+		htstring = "4.5";
+
+	}
+
+
+	if (start_temp==0.5) {
+
+		starttempstring = "0.50";
+
+		if (final_temp==2.16) {
+		
+			finaltempstring = "2.16";
+
+		} else if (final_temp==5.49) {
+
+			finaltempstring = "5.49";
+
+		}
+
+	} else if (start_temp==2.17) {
+
+		starttempstring = "2.17";
+
+		finaltempstring = "3.82";
+
+	} else if (start_temp==3.83) {
+
+		starttempstring = "3.83";
+
+		finaltempstring = "5.49";
+
+	}
+
+	string log_txt = "log_nx=" + nxstring + "_task5_ht=" + htstring + "_temps" + starttempstring + "to" + finaltempstring + ".txt";
+
+	//@ string config_txt = "config_nx=" + to_string(nx) + "_task5_ht=" + htstring + "_temps" + starttempstring + "to" + finaltempstring + ".txt";
+
+	string mag_txt = "mag_nx=" + nxstring + "_task5_ht=" + htstring + "_temps" + starttempstring + "to" + finaltempstring + ".txt";
+
+	string enr_txt = "enr_nx=" + nxstring + "_task5_ht=" + htstring + "_temps" + starttempstring + "to" + finaltempstring + ".txt";
+
+	string acc_txt = "acc_nx=" + nxstring + "_task5_ht=" + htstring + "_temps" + starttempstring + "to" + finaltempstring + ".txt";
+
+	string avn1_txt = "avn1_nx=" + nxstring + "_task5_ht=" + htstring + "_temps" + starttempstring + "to" + finaltempstring + ".txt";
+
+	string mag_pow2_txt = "mag_pow2_nx=" + nxstring + "_task5_ht=" + htstring + "_temps" + starttempstring + "to" + finaltempstring + ".txt";
+
+	string avg_en_txt = "avg_en_nx=" + nxstring + "_task5_ht=" + htstring + "_temps" + starttempstring + "to" + finaltempstring + ".txt";
+
+	string binder_txt = "binder_nx=" + nxstring + "_task5_ht=" + htstring + "_temps" + starttempstring + "to" + finaltempstring + ".txt";
+
+	myfile1.open (log_txt.c_str());
+
+	//@ myfile2.open(config_txt);
+
+	myfile3.open (mag_txt.c_str());
+
+	myfile4.open (enr_txt.c_str());
+
+	myfile5.open (acc_txt.c_str());
+
+	myfile6.open (avn1_txt.c_str());
+
+	myfile7.open (mag_pow2_txt.c_str());
+
+	myfile8.open (avg_en_txt.c_str());
+
+	myfile9.open (binder_txt.c_str());
+
+}
+
+
+
+//@----------------------------------------------------------------
+
+
+
+void zero_between_temps () {
+
+	mlls = 0;
+
+	ar1 = 0.0;
+
+	ar2 = 0.0;
+
+	ar3 = 0.0;
+
+	ar4 = 0.0;
+
+	for (int c=0; c<(ll+1); c++) {
+
+		ap1[c] = 0.0;
+
+		dp1[c] = 0.0;
+
+		tmp1[c] = 0;
+
+		tmp2[c] = 0;
+
+		lstr[c] = 0;
+
+	}
+
+	for (int d=0; d<(nx+1); d++) {
+
+		pfrst[d] = 0;
+
+		plast[d] = 0;
+
+		lsub[d] = 0;
+
+		spn1[d] = 0;
+
+		for (int f=0; f<(lls+1); f++) {
+
+			pos1[f][d] = 0;
+
+			str1[f][d] = 0;
+
+			con1[f][d] = 0;
+
+			pos[f] = 0;
+
+			opr[f] = 0;
 
 		}
 
 	}
-
-	myfile8 << step << " " << nh_c << "\n";
 
 
 }
